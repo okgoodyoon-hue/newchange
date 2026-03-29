@@ -21,7 +21,6 @@ const storage = getStorage(app);
 
 // --- 상태 관리 ---
 let currentView = 'auth';
-
 const state = {
   user: null,
   entries: [],
@@ -32,70 +31,33 @@ const state = {
   mainTab: 'diary'
 };
 
-// --- 뉴스 카테고리 (언론사 다중화) ---
-const newsSources = {
-  top: [
-    'https://news.sbs.co.kr/news/rss/news_top.xml',
-    'https://news.kbs.co.kr/rss/news9.xml',
-    'https://imnews.imbc.com/rss/news/news_00.xml',
-    'https://www.yonhapnewstv.co.kr/browse/feed/'
-  ],
-  pol: [
-    'https://news.sbs.co.kr/news/rss/news_politics.xml',
-    'https://news.kbs.co.kr/rss/news_politics.xml',
-    'https://imnews.imbc.com/rss/news/news_01.xml'
-  ],
-  eco: [
-    'https://news.sbs.co.kr/news/rss/news_economy.xml',
-    'https://news.kbs.co.kr/rss/news_economy.xml',
-    'https://imnews.imbc.com/rss/news/news_02.xml'
-  ],
-  soc: [
-    'https://news.sbs.co.kr/news/rss/news_society.xml',
-    'https://news.kbs.co.kr/rss/news_society.xml',
-    'https://imnews.imbc.com/rss/news/news_03.xml'
-  ],
-  cul: [
-    'https://news.sbs.co.kr/news/rss/news_lifestyle.xml',
-    'https://news.kbs.co.kr/rss/news_culture.xml',
-    'https://imnews.imbc.com/rss/news/news_07.xml'
-  ],
-  sci: [
-    'https://news.sbs.co.kr/news/rss/news_it_science.xml',
-    'https://news.kbs.co.kr/rss/news_digital.xml',
-    'https://imnews.imbc.com/rss/news/news_08.xml'
-  ]
-};
-
-const newsCategories = [
-  { id: 'top', name: '주요 뉴스' },
-  { id: 'pol', name: '정치' },
-  { id: 'eco', name: '경제' },
-  { id: 'soc', name: '사회' },
-  { id: 'cul', name: '생활/문화' },
-  { id: 'sci', name: 'IT/과학' }
+// --- 통합 실시간 뉴스 소스 ---
+const latestNewsSources = [
+  'https://news.sbs.co.kr/news/rss/news_top.xml',
+  'https://news.kbs.co.kr/rss/news9.xml',
+  'https://imnews.imbc.com/rss/news/news_00.xml',
+  'https://www.yonhapnewstv.co.kr/browse/feed/'
 ];
 
-let selectedCategory = 'top';
-
-// --- 뉴스 가져오기 로직 ---
-async function fetchLiveNews(catId = 'top') {
-  const urls = newsSources[catId] || newsSources.top;
+// --- 뉴스 가져오기 로직 (최신 속보 통합) ---
+async function fetchLatestHeadlines() {
   const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3';
   try {
-    const fetchPromises = urls.map(url => 
+    const fetchPromises = latestNewsSources.map(url => 
       fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=${API_KEY}&t=${Date.now()}`)
         .then(res => res.json())
         .then(data => data.status === 'ok' ? data.items : [])
         .catch(() => [])
     );
     const results = await Promise.all(fetchPromises);
-    const allItems = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    const allItems = results.flat()
+      .filter(item => item.title)
+      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
     if (allItems.length === 0) throw new Error('No news');
-    return groupSimilarNews(allItems);
+    return groupSimilarNews(allItems).slice(0, 25);
   } catch (e) {
-    console.warn("뉴스 로딩 실패, 샘플 데이터 사용:", e);
-    return [{ title: "[공지] 뉴스 시스템 점검 중입니다.", link: "#", pubDate: new Date().toISOString(), description: "잠시 후 시도해주세요.", author: "운영팀", related: [] }];
+    console.warn("뉴스 로딩 실패, 샘플 사용:", e);
+    return [{ title: "[속보] 감정 일기장 실시간 뉴스 시스템 가동", link: "#", pubDate: new Date().toISOString(), related: [] }];
   }
 }
 
@@ -171,14 +133,7 @@ function renderNav() {
 function renderAuth() {
   const div = document.createElement('div');
   div.className = 'view-auth';
-  div.innerHTML = `
-    <div class="auth-card">
-      <h1>감정 일기장</h1>
-      <p>닉네임을 입력하고 오늘을 시작하세요.</p>
-      <input type="text" id="nickname" placeholder="닉네임 입력" maxlength="15">
-      <button id="start-btn">일기 시작하기</button>
-    </div>
-  `;
+  div.innerHTML = `<div class="auth-card"><h1>감정 일기장</h1><p>닉네임을 입력하고 시작하세요.</p><input type="text" id="nickname" placeholder="닉네임" maxlength="15"><button id="start-btn">시작하기</button></div>`;
   div.querySelector('#start-btn').onclick = async () => {
     const nickname = div.querySelector('#nickname').value.trim();
     if (!nickname) return alert('닉네임을 입력해주세요.');
@@ -196,49 +151,27 @@ async function renderHome() {
   div.innerHTML = `
     <aside class="diary-column">
       <h2 class="section-title">📅 나의 기록실</h2>
-      <div class="search-container">
-        <input type="text" id="search-bar" class="search-input" placeholder="기억을 검색하세요..." value="${state.searchQuery}">
-      </div>
+      <div class="search-container"><input type="text" id="search-bar" class="search-input" placeholder="검색..." value="${state.searchQuery}"></div>
       <div id="calendar-container" class="calendar-wrapper"></div>
       <div id="my-list"></div>
-      
-      <div class="best-diary-section">
-        <h2 class="section-title" style="margin-top: 2rem;">🏆 인기 일기</h2>
-        <div id="best-diary-list"></div>
-      </div>
-
-      <div class="public-feed-section">
-        <h2 class="section-title" style="margin-top: 2rem;">🌊 공개 피드</h2>
-        <div id="feed-list"></div>
-      </div>
+      <div class="best-diary-section"><h2 class="section-title" style="margin-top:2rem;">🏆 인기 일기</h2><div id="best-diary-list"></div></div>
+      <div class="public-feed-section"><h2 class="section-title" style="margin-top:2rem;">🌊 공개 피드</h2><div id="feed-list"></div></div>
     </aside>
 
     <main class="news-column">
       <div class="newspaper-container">
         <div class="newspaper-header">
           <h1 class="newspaper-title">The Daily News</h1>
-          <div class="newspaper-meta">
-            <span>제 ${Math.floor(Date.now()/1000000)}호</span>
-            <span>${new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-            <span>통합 뉴스룸</span>
-          </div>
-        </div>
-        <div class="news-categories">
-          ${newsCategories.map(cat => `<span class="cat-tag ${selectedCategory === cat.id ? 'active' : ''}" data-id="${cat.id}">${cat.name}</span>`).join('')}
+          <div class="newspaper-meta"><span>REAL-TIME HEADLINES</span><span>${new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span><span>LIVE</span></div>
         </div>
         <div id="newspaper-articles"><div class="loader-container"><div class="loader"></div></div></div>
       </div>
-      
-      <div class="newspaper-section-header">
-        <h2 class="newspaper-section-title">News Discussion</h2>
-        <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-top: 0.2rem; font-family: 'Georgia', serif;">Public Opinions & Empathy</div>
-      </div>
+      <div class="newspaper-section-header"><h2 class="newspaper-section-title">News Discussion</h2></div>
       <div id="news-list"></div>
     </main>
   `;
   appContainer.appendChild(div);
 
-  // Diary Logic (Left)
   renderCalendar(div.querySelector('#calendar-container'));
   const searchInput = div.querySelector('#search-bar');
   searchInput.oninput = (e) => { state.searchQuery = e.target.value.toLowerCase(); filterMyHistory(); };
@@ -252,33 +185,24 @@ async function renderHome() {
   const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname).slice(0, 5);
   renderListInside(publicFeedCont, publicFeed.length ? publicFeed : mockFeed());
 
-  // News Logic (Right)
-  div.querySelectorAll('.cat-tag').forEach(tag => {
-    tag.onclick = () => { selectedCategory = tag.dataset.id; render(); };
-  });
-
   const newsListCont = div.querySelector('#newspaper-articles');
-  fetchLiveNews(selectedCategory).then(articles => {
+  fetchLatestHeadlines().then(articles => {
     newsListCont.innerHTML = '';
-    const isTop = selectedCategory === 'top';
-    articles.slice(0, 15).forEach(item => {
+    articles.forEach(item => {
       const article = document.createElement('div');
       article.className = 'article-card';
-      if (isTop) article.style.padding = '0.75rem 0';
+      article.style.padding = '0.8rem 0';
       const source = extractSource(item.link);
       const uniqueRelated = [...new Set(item.related.map(r => extractSource(r.link)))].filter(s => s !== source);
       article.innerHTML = `
         <div class="headline-container" style="display:flex; flex-direction:column; gap:0.25rem;">
-          <a href="${item.link}" target="_blank" class="article-headline" style="${isTop ? 'font-size:1.1rem; border-left:4px solid #1a1a1a; padding-left:12px;' : ''}">${item.title}</a>
-          <div class="related-info" style="font-size:0.7rem; margin-left:${isTop ? '12px' : '0'}; color:#666;">
+          <a href="${item.link}" target="_blank" class="article-headline" style="font-size:1.1rem; border-left:4px solid #1a1a1a; padding-left:12px; line-height:1.3;">${item.title}</a>
+          <div class="related-info" style="font-size:0.7rem; margin-left:12px; color:#666; display:flex; align-items:center; gap:0.5rem;">
             <span style="color:#ff4b2b; font-weight:bold;">${source}</span>
-            ${uniqueRelated.length > 0 ? ` 외 <span style="font-weight:bold; color:#1a1a1a;">${uniqueRelated.join(', ')}</span> 보도` : ''}
+            ${uniqueRelated.length > 0 ? ` 외 ${uniqueRelated.join(', ')}` : ''}
+            <span style="margin-left:auto;">${new Date(item.pubDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}" style="border:none; background:none; color:var(--primary); cursor:pointer;">💬 토론</button>
           </div>
-        </div>
-        ${isTop ? '' : `<div class="article-content" style="column-count:1;">${item.description.replace(/<[^>]*>?/gm, '').substring(0, 150)}...</div>`}
-        <div class="article-footer">
-          <div class="article-meta-info"><span>${new Date(item.pubDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span></div>
-          <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}">💬 토론</button>
         </div>
       `;
       article.querySelector('.share-to-disc-btn').onclick = (e) => {
@@ -286,7 +210,7 @@ async function renderHome() {
         const { url, title } = e.target.dataset;
         const comment = prompt(`"${title}"\n의견을 남겨주세요:`);
         if (comment !== null) {
-          state.news.unshift({ id: Date.now().toString(), url, title, comment: comment || "공감합니다!", user: state.user.nickname, timestamp: new Date().toISOString(), empathy: 0, nonEmpathy: 0 });
+          state.news.unshift({ id: Date.now().toString(), url, title, comment: comment || "공감!", user: state.user.nickname, timestamp: new Date().toISOString(), empathy: 0, nonEmpathy: 0 });
           render();
         }
       };
@@ -295,8 +219,7 @@ async function renderHome() {
   });
 
   const newsDiscCont = div.querySelector('#news-list');
-  const newsItems = state.news.length ? state.news : mockNews();
-  newsItems.forEach(item => {
+  (state.news.length ? state.news : mockNews()).forEach(item => {
     const card = document.createElement('news-card'); card.setAttribute('data', JSON.stringify(item)); newsDiscCont.appendChild(card);
   });
 }
@@ -333,66 +256,27 @@ function filterMyHistory() {
   else filtered.forEach(item => { const card = document.createElement('diary-card'); card.setAttribute('data', JSON.stringify(item)); container.appendChild(card); });
 }
 
-// --- View: Post ---
 function renderPost() {
   const quickEmotions = [
-    { emoji: '😊', label: '행복해' }, { emoji: '🥰', label: '사랑해' }, { emoji: '🥳', label: '신나' }, 
-    { emoji: '🤩', label: '최고야' }, { emoji: '😂', label: '웃겨' }, { emoji: '😌', label: '편안해' }, 
-    { emoji: '😴', label: '졸려' }, { emoji: '🍃', label: '평온' }, { emoji: '😢', label: '슬퍼' }, 
-    { emoji: '😭', label: '눈물나' }, { emoji: '😞', label: '우울해' }, { emoji: '🤒', label: '아파' }, 
-    { emoji: '😡', label: '화나' }, { emoji: '😤', label: '짜증나' }, { emoji: '🤯', label: '멘붕' }, 
-    { emoji: '🤔', label: '고민중' }
+    { emoji: '😊', label: '행복' }, { emoji: '🥰', label: '사랑' }, { emoji: '🥳', label: '신나' }, 
+    { emoji: '😌', label: '편안' }, { emoji: '😴', label: '졸려' }, { emoji: '😢', label: '슬픔' }, 
+    { emoji: '😭', label: '눈물' }, { emoji: '😡', label: '화남' }, { emoji: '🤔', label: '고민' }
   ];
-
   const div = document.createElement('div');
   div.innerHTML = `<div class="post-tabs" style="display:flex; gap:1rem; margin-bottom:1rem;"><button class="tab-btn active" data-tab="diary">일기</button><button class="tab-btn" data-tab="news">뉴스</button></div><div id="tab-content"></div><div id="sentiment-preview"></div>`;
   const tabs = div.querySelectorAll('.tab-btn');
   tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); renderTabContent(div.querySelector('#tab-content'), tab.dataset.tab); }; });
-  
   function renderTabContent(container, type) {
     container.innerHTML = '';
     if (type === 'diary') {
-      container.innerHTML = `
-        <h2 class="section-title">✍️ 일기 쓰기</h2>
-        <div class="auth-card">
-          <textarea id="diary-text" maxlength="100" placeholder="오늘 하루는 어떠셨나요?"></textarea>
-          <div class="char-count">0/100</div>
-          
-          <div class="quick-emotion-section">
-            <span class="quick-emotion-label">간편 감정 선택:</span>
-            <div class="quick-emotion-list">
-              ${quickEmotions.map(e => `<button class="emotion-tag-btn" data-val="${e.emoji} ${e.label}">${e.emoji} ${e.label}</button>`).join('')}
-            </div>
-          </div>
-
-          <div class="privacy-toggle" style="margin-top:1.5rem;"><label><input type="checkbox" id="is-public" checked> 공개</label></div>
-          <button id="post-btn">저장</button>
-        </div>
-      `;
+      container.innerHTML = `<h2 class="section-title">✍️ 일기 쓰기</h2><div class="auth-card"><textarea id="diary-text" maxlength="100" placeholder="오늘 하루는?"></textarea><div class="char-count">0/100</div><div class="quick-emotion-section"><div class="quick-emotion-list">${quickEmotions.map(e => `<button class="emotion-tag-btn" data-val="${e.emoji} ${e.label}">${e.emoji} ${e.label}</button>`).join('')}</div></div><div class="privacy-toggle" style="margin-top:1.5rem;"><label><input type="checkbox" id="is-public" checked> 공개</label></div><button id="post-btn">저장</button></div>`;
       const textarea = container.querySelector('#diary-text');
-      const updateSentiment = () => {
-        container.querySelector('.char-count').textContent = `${textarea.value.length}/100`; 
-        renderSentiment(div.querySelector('#sentiment-preview'), analyzeSentiment(textarea.value));
-      };
-
-      textarea.oninput = updateSentiment;
-
-      container.querySelectorAll('.emotion-tag-btn').forEach(btn => {
-        btn.onclick = () => {
-          if (textarea.value.length + btn.dataset.val.length + 1 <= 100) {
-            textarea.value += (textarea.value ? ' ' : '') + btn.dataset.val;
-            updateSentiment();
-          }
-        };
-      });
-
-      container.querySelector('#post-btn').onclick = () => {
-        if (!textarea.value) return;
-        state.entries.unshift({ id: Date.now().toString(), text: textarea.value, user: state.user.nickname, likes: 0, timestamp: new Date().toISOString(), dateString: new Date().toLocaleDateString(), sentiment: analyzeSentiment(textarea.value), isPublic: container.querySelector('#is-public').checked });
-        navigate('home');
-      };
+      const updateS = () => { container.querySelector('.char-count').textContent = `${textarea.value.length}/100`; renderSentiment(div.querySelector('#sentiment-preview'), analyzeSentiment(textarea.value)); };
+      textarea.oninput = updateS;
+      container.querySelectorAll('.emotion-tag-btn').forEach(btn => { btn.onclick = () => { if (textarea.value.length + btn.dataset.val.length + 1 <= 100) { textarea.value += (textarea.value ? ' ' : '') + btn.dataset.val; updateS(); } }; });
+      container.querySelector('#post-btn').onclick = () => { if (!textarea.value) return; state.entries.unshift({ id: Date.now().toString(), text: textarea.value, user: state.user.nickname, likes: 0, timestamp: new Date().toISOString(), dateString: new Date().toLocaleDateString(), sentiment: analyzeSentiment(textarea.value), isPublic: container.querySelector('#is-public').checked }); navigate('home'); };
     } else {
-      container.innerHTML = `<h2 class="section-title">📰 뉴스 공유</h2><div class="auth-card"><input type="text" id="news-url" placeholder="URL 주소"><textarea id="news-comment" placeholder="의견"></textarea><button id="news-post-btn">공유</button></div>`;
+      container.innerHTML = `<h2 class="section-title">📰 뉴스 공유</h2><div class="auth-card"><input type="text" id="news-url" placeholder="URL"><textarea id="news-comment" placeholder="의견"></textarea><button id="news-post-btn">공유</button></div>`;
       container.querySelector('#news-post-btn').onclick = () => { const url = container.querySelector('#news-url').value; if (!url) return; state.news.unshift({ id: Date.now().toString(), url, comment: container.querySelector('#news-comment').value, user: state.user.nickname, timestamp: new Date().toISOString(), empathy: 0, nonEmpathy: 0 }); navigate('home'); };
     }
   }
@@ -404,9 +288,9 @@ function renderSentiment(container, scores) {
 }
 
 function renderChat() { appContainer.innerHTML = `<h2 class="section-title">💬 채팅</h2><div class="auth-card">준비 중입니다.</div>`; }
-function mockNews() { return [{ id:'n1', url:'https://news.example.com/1', comment:'좋은 뉴스!', user:'관리자', empathy:10, nonEmpathy:1, timestamp:new Date().toISOString() }]; }
-function mockBest10() { return [{ id:'b1', text:'최고의 날! ✨', user:'사용자1', likes:100, sentiment:{joy:100,sad:0,anger:0,calm:0} }]; }
-function mockFeed() { return [{ id:'f1', text:'안녕하세요!', user:'사용자2', likes:5, sentiment:{joy:50,sad:0,anger:0,calm:50} }]; }
+function mockNews() { return [{ id:'n1', url:'https://news.example.com/1', title:'환영합니다!', comment:'좋은 뉴스네요.', user:'관리자', empathy:10, nonEmpathy:1, timestamp:new Date().toISOString() }]; }
+function mockBest10() { return [{ id:'b1', text:'정말 멋진 날! ✨', user:'사용자1', likes:100, sentiment:{joy:100,sad:0,anger:0,calm:0} }]; }
+function mockFeed() { return [{ id:'f1', text:'반가워요!', user:'사용자2', likes:5, sentiment:{joy:50,sad:0,anger:0,calm:50} }]; }
 
 class DiaryCard extends HTMLElement {
   connectedCallback() { const data = JSON.parse(this.getAttribute('data')); this.innerHTML = `<div class="diary-card"><div class="card-header"><span class="card-user">@${data.user}</span></div><div class="card-content">${data.text}</div><div class="card-footer"><button class="like-btn">❤️ ${data.likes}</button></div></div>`; }

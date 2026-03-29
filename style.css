@@ -763,6 +763,8 @@ button:active {
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
 }
 
 .share-to-disc-btn:hover {
