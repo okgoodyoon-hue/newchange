@@ -189,7 +189,7 @@ async function renderHome() {
     items.forEach(item => {
       const article = document.createElement('div');
       article.className = 'article-card';
-      if (isTop) article.style.padding = '0.75rem 0'; // Compact style for TOP NEWS
+      if (isTop) article.style.padding = '0.75rem 0'; 
       
       article.innerHTML = `
         <a href="${item.link}" target="_blank" class="article-headline" style="${isTop ? 'font-size: 1.1rem; border-left: 3px solid #1a1a1a; padding-left: 10px;' : ''}">
@@ -197,10 +197,36 @@ async function renderHome() {
         </a>
         ${isTop ? '' : `<div class="article-content">${item.description.replace(/<[^>]*>?/gm, '').substring(0, 250)}...</div>`}
         <div class="article-footer">
-          <span>${new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          <span>${item.author || 'Press'}</span>
+          <div class="article-meta-info">
+            <span>${new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>${item.author || 'Press'}</span>
+          </div>
+          <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}">💬 Discuss</button>
         </div>
       `;
+      
+      // Share functionality
+      article.querySelector('.share-to-disc-btn').onclick = (e) => {
+        e.preventDefault();
+        const { url, title } = e.target.dataset;
+        const comment = prompt(`What are your thoughts on: "${title}"?`);
+        if (comment !== null) {
+          state.news.unshift({
+            id: Date.now().toString(),
+            url: url,
+            title: title,
+            comment: comment || "Interesting news!",
+            user: state.user.nickname,
+            timestamp: new Date().toISOString(),
+            empathy: 0,
+            nonEmpathy: 0
+          });
+          state.mainTab = 'news';
+          render();
+          alert('Shared to News Discussion tab!');
+        }
+      };
+      
       newsListCont.appendChild(article);
     });
   });
