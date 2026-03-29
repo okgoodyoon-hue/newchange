@@ -97,17 +97,79 @@ function renderAuth() {
   appContainer.appendChild(div);
 }
 
+// --- News Fetching Logic ---
+async function fetchLiveNews() {
+  const RSS_URL = 'https://www.yonhapnewstv.co.kr/browse/feed/';
+  const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
+  
+  try {
+    const response = await fetch(API_URL);
+    const data = await response.json();
+    if (data.status === 'ok') {
+      return data.items.map(item => ({
+        id: item.guid,
+        url: item.link,
+        title: item.title,
+        comment: item.description.substring(0, 100) + '...',
+        user: 'LIVE NEWS',
+        timestamp: item.pubDate,
+        empathy: Math.floor(Math.random() * 50),
+        nonEmpathy: Math.floor(Math.random() * 5),
+        isLive: true
+      }));
+    }
+  } catch (e) {
+    console.error("Failed to fetch live news:", e);
+    return [];
+  }
+}
+
 // --- View: Home ---
 async function renderHome() {
   const div = document.createElement('div');
   div.innerHTML = `
-    <div class="main-tabs">
-      <button class="main-tab-btn ${state.mainTab === 'diary' ? 'active' : ''}" data-tab="diary">Diaries</button>
-      <button class="main-tab-btn ${state.mainTab === 'news' ? 'active' : ''}" data-tab="news">News Empathy</button>
+    <div class="best-grid">
+      <div class="best-column">
+        <h2 class="section-title">📡 Live Breaking News</h2>
+        <div id="live-news-list">
+          <div class="loader-container"><div class="loader"></div></div>
+        </div>
+      </div>
+      <div class="best-column">
+        <h2 class="section-title">🏆 Best Diary</h2>
+        <div id="best-diary-list"></div>
+      </div>
     </div>
+
+    <div class="main-tabs">
+      <button class="main-tab-btn ${state.mainTab === 'diary' ? 'active' : ''}" data-tab="diary">My History & Feed</button>
+      <button class="main-tab-btn ${state.mainTab === 'news' ? 'active' : ''}" data-tab="news">Discussion</button>
+    </div>
+
     <div id="main-content"></div>
   `;
   appContainer.appendChild(div);
+
+  // Fetch and Render Live News
+  const liveNewsCont = div.querySelector('#live-news-list');
+  fetchLiveNews().then(newsItems => {
+    liveNewsCont.innerHTML = '';
+    const itemsToShow = newsItems.length ? newsItems.slice(0, 5) : mockNews();
+    itemsToShow.forEach(item => {
+      const card = document.createElement('news-card');
+      card.setAttribute('data', JSON.stringify(item));
+      liveNewsCont.appendChild(card);
+    });
+  });
+
+  // Render Best Diary (Static top section)
+  const bestDiary = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 3);
+  const bestDiaryCont = div.querySelector('#best-diary-list');
+  (bestDiary.length ? bestDiary : mockBest10().slice(0, 2)).forEach(item => {
+    const card = document.createElement('diary-card');
+    card.setAttribute('data', JSON.stringify(item));
+    bestDiaryCont.appendChild(card);
+  });
 
   div.querySelectorAll('.main-tab-btn').forEach(btn => {
     btn.onclick = () => {
@@ -130,15 +192,13 @@ function renderMainContent(container) {
         <div id="calendar-container" class="calendar-wrapper"></div>
         <div id="my-list"></div>
       </section>
-      <section class="best-10">
-        <h2 class="section-title">✨ Best 10</h2>
-        <div id="best-10-list"></div>
-      </section>
+
       <section class="recent-feed">
         <h2 class="section-title">🌊 Public Feed</h2>
         <div id="feed-list"></div>
       </section>
     `;
+
     renderCalendar(container.querySelector('#calendar-container'));
     const searchInput = container.querySelector('#search-bar');
     searchInput.oninput = (e) => {
@@ -147,14 +207,13 @@ function renderMainContent(container) {
     };
     filterMyHistory();
 
-    const best10 = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 10);
     const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname);
-    renderList('best-10-list', best10.length ? best10 : mockBest10());
     renderList('feed-list', publicFeed.length ? publicFeed : mockFeed());
+
   } else {
     container.innerHTML = `
       <section class="news-feed">
-        <h2 class="section-title">📰 Empathy News</h2>
+        <h2 class="section-title">📰 Latest Discussion</h2>
         <div id="news-list"></div>
       </section>
     `;
@@ -167,6 +226,7 @@ function renderMainContent(container) {
     });
   }
 }
+
 
 function renderCalendar(container) {
   const scroll = document.createElement('div');
@@ -343,19 +403,21 @@ customElements.define('diary-card', DiaryCard);
 class NewsCard extends HTMLElement {
   connectedCallback() {
     const data = JSON.parse(this.getAttribute('data'));
-    let displayTitle = data.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
-    if (displayTitle.length > 30) displayTitle = displayTitle.substring(0, 30) + '...';
+    let displayTitle = data.title || data.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+    if (displayTitle.length > 50) displayTitle = displayTitle.substring(0, 50) + '...';
 
     this.innerHTML = `
-      <div class="news-card">
-        <div class="news-card-header">
-          <a href="${data.url}" target="_blank" class="news-link-display">${displayTitle}</a>
+      <div class="news-card ${data.isLive ? 'live' : ''}">
+        <div class="news-card-header" style="${data.isLive ? 'background: linear-gradient(135deg, #ff4b2b, #ff416c);' : ''}">
+          <a href="${data.url}" target="_blank" class="news-link-display">
+            ${data.isLive ? '<span class="live-badge">LIVE</span> ' : ''}${displayTitle}
+          </a>
           <div class="card-date" style="color:rgba(255,255,255,0.7); font-size:0.8rem; margin-top:0.5rem;">
-            Shared by @${data.user}
+            ${data.isLive ? 'Breaking News' : `Shared by @${data.user}`}
           </div>
         </div>
         <div class="news-card-body">
-          ${data.comment ? `<div class="news-comment-box">${data.comment}</div>` : ''}
+          <div class="news-comment-box" style="font-size: 0.85rem;">${data.comment || 'No comments'}</div>
           <div class="empathy-container">
             <button class="emp-btn agree">👍 Empathy ${data.empathy}</button>
             <button class="emp-btn disagree">👎 Non-Empathy ${data.nonEmpathy}</button>
