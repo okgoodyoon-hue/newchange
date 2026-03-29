@@ -97,14 +97,14 @@ function renderAuth() {
   appContainer.appendChild(div);
 }
 
-// --- News Categories ---
+// --- News Categories (Updated with more reliable feeds) ---
 const newsCategories = [
-  { id: 'top', name: 'TOP NEWS', url: 'https://www.yonhapnewstv.co.kr/browse/feed/' },
-  { id: 'pol', name: 'POLITICS', url: 'https://www.yonhapnewstv.co.kr/category/politics/feed/' },
-  { id: 'eco', name: 'ECONOMY', url: 'https://www.yonhapnewstv.co.kr/category/economy/feed/' },
-  { id: 'soc', name: 'SOCIETY', url: 'https://www.yonhapnewstv.co.kr/category/society/feed/' },
-  { id: 'cul', name: 'LIFE/CULT', url: 'https://www.yonhapnewstv.co.kr/category/culture/feed/' },
-  { id: 'sci', name: 'IT/SCI', url: 'https://www.yonhapnewstv.co.kr/category/it_science/feed/' }
+  { id: 'top', name: 'TOP NEWS', url: 'https://news.sbs.co.kr/news/rss/news_top.xml' },
+  { id: 'pol', name: 'POLITICS', url: 'https://news.kbs.co.kr/rss/news9.xml' }, // KBS 9 News for stability
+  { id: 'eco', name: 'ECONOMY', url: 'https://news.sbs.co.kr/news/rss/news_economy.xml' },
+  { id: 'soc', name: 'SOCIETY', url: 'https://news.sbs.co.kr/news/rss/news_society.xml' },
+  { id: 'cul', name: 'LIFE/CULT', url: 'https://news.sbs.co.kr/news/rss/news_lifestyle.xml' },
+  { id: 'sci', name: 'IT/SCI', url: 'https://news.sbs.co.kr/news/rss/news_it_science.xml' }
 ];
 
 let selectedCategory = 'top';
@@ -112,7 +112,8 @@ let selectedCategory = 'top';
 // --- News Fetching Logic ---
 async function fetchLiveNews(catId = 'top') {
   const cat = newsCategories.find(c => c.id === catId) || newsCategories[0];
-  const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(cat.url)}`;
+  // Using a cleaner API approach with no caching to ensure fresh news
+  const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(cat.url)}&api_key=your_free_key_if_needed&t=${Date.now()}`;
   
   try {
     const response = await fetch(API_URL);
@@ -176,13 +177,25 @@ async function renderHome() {
   const newsListCont = div.querySelector('#newspaper-articles');
   fetchLiveNews(selectedCategory).then(articles => {
     newsListCont.innerHTML = '';
-    const items = articles.length ? articles.slice(0, 6) : [];
+    
+    if (articles.length === 0) {
+      newsListCont.innerHTML = `<div class="empty-state" style="padding: 2rem; text-align: center; opacity: 0.5;">Updating news feeds... Please try again in a moment.</div>`;
+      return;
+    }
+
+    const isTop = selectedCategory === 'top';
+    const items = isTop ? articles.slice(0, 10) : articles.slice(0, 6);
+    
     items.forEach(item => {
       const article = document.createElement('div');
       article.className = 'article-card';
+      if (isTop) article.style.padding = '0.75rem 0'; // Compact style for TOP NEWS
+      
       article.innerHTML = `
-        <a href="${item.link}" target="_blank" class="article-headline">${item.title}</a>
-        <div class="article-content">${item.description.replace(/<[^>]*>?/gm, '').substring(0, 250)}...</div>
+        <a href="${item.link}" target="_blank" class="article-headline" style="${isTop ? 'font-size: 1.1rem; border-left: 3px solid #1a1a1a; padding-left: 10px;' : ''}">
+          ${item.title}
+        </a>
+        ${isTop ? '' : `<div class="article-content">${item.description.replace(/<[^>]*>?/gm, '').substring(0, 250)}...</div>`}
         <div class="article-footer">
           <span>${new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           <span>${item.author || 'Press'}</span>
