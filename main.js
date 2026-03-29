@@ -332,18 +332,64 @@ function filterMyHistory() {
   else filtered.forEach(item => { const card = document.createElement('diary-card'); card.setAttribute('data', JSON.stringify(item)); container.appendChild(card); });
 }
 
+// --- View: Post ---
 function renderPost() {
+  const quickEmotions = [
+    { emoji: '😊', label: '행복해' }, { emoji: '🥰', label: '사랑해' }, { emoji: '🥳', label: '신나' }, 
+    { emoji: '🤩', label: '최고야' }, { emoji: '😂', label: '웃겨' }, { emoji: '😌', label: '편안해' }, 
+    { emoji: '😴', label: '졸려' }, { emoji: '🍃', label: '평온' }, { emoji: '😢', label: '슬퍼' }, 
+    { emoji: '😭', label: '눈물나' }, { emoji: '😞', label: '우울해' }, { emoji: '🤒', label: '아파' }, 
+    { emoji: '😡', label: '화나' }, { emoji: '😤', label: '짜증나' }, { emoji: '🤯', label: '멘붕' }, 
+    { emoji: '🤔', label: '고민중' }
+  ];
+
   const div = document.createElement('div');
   div.innerHTML = `<div class="post-tabs" style="display:flex; gap:1rem; margin-bottom:1rem;"><button class="tab-btn active" data-tab="diary">일기</button><button class="tab-btn" data-tab="news">뉴스</button></div><div id="tab-content"></div><div id="sentiment-preview"></div>`;
   const tabs = div.querySelectorAll('.tab-btn');
   tabs.forEach(tab => { tab.onclick = () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); renderTabContent(div.querySelector('#tab-content'), tab.dataset.tab); }; });
+  
   function renderTabContent(container, type) {
     container.innerHTML = '';
     if (type === 'diary') {
-      container.innerHTML = `<h2 class="section-title">✍️ 일기 쓰기</h2><div class="auth-card"><textarea id="diary-text" maxlength="100" placeholder="오늘 하루는?"></textarea><div class="char-count">0/100</div><div class="privacy-toggle"><label><input type="checkbox" id="is-public" checked> 공개</label></div><button id="post-btn">저장</button></div>`;
+      container.innerHTML = `
+        <h2 class="section-title">✍️ 일기 쓰기</h2>
+        <div class="auth-card">
+          <textarea id="diary-text" maxlength="100" placeholder="오늘 하루는 어떠셨나요?"></textarea>
+          <div class="char-count">0/100</div>
+          
+          <div class="quick-emotion-section">
+            <span class="quick-emotion-label">간편 감정 선택:</span>
+            <div class="quick-emotion-list">
+              ${quickEmotions.map(e => `<button class="emotion-tag-btn" data-val="${e.emoji} ${e.label}">${e.emoji} ${e.label}</button>`).join('')}
+            </div>
+          </div>
+
+          <div class="privacy-toggle" style="margin-top:1.5rem;"><label><input type="checkbox" id="is-public" checked> 공개</label></div>
+          <button id="post-btn">저장</button>
+        </div>
+      `;
       const textarea = container.querySelector('#diary-text');
-      textarea.oninput = () => { container.querySelector('.char-count').textContent = `${textarea.value.length}/100`; renderSentiment(div.querySelector('#sentiment-preview'), analyzeSentiment(textarea.value)); };
-      container.querySelector('#post-btn').onclick = () => { if (!textarea.value) return; state.entries.unshift({ id: Date.now().toString(), text: textarea.value, user: state.user.nickname, likes: 0, timestamp: new Date().toISOString(), dateString: new Date().toLocaleDateString(), sentiment: analyzeSentiment(textarea.value), isPublic: container.querySelector('#is-public').checked }); navigate('home'); };
+      const updateSentiment = () => {
+        container.querySelector('.char-count').textContent = `${textarea.value.length}/100`; 
+        renderSentiment(div.querySelector('#sentiment-preview'), analyzeSentiment(textarea.value));
+      };
+
+      textarea.oninput = updateSentiment;
+
+      container.querySelectorAll('.emotion-tag-btn').forEach(btn => {
+        btn.onclick = () => {
+          if (textarea.value.length + btn.dataset.val.length + 1 <= 100) {
+            textarea.value += (textarea.value ? ' ' : '') + btn.dataset.val;
+            updateSentiment();
+          }
+        };
+      });
+
+      container.querySelector('#post-btn').onclick = () => {
+        if (!textarea.value) return;
+        state.entries.unshift({ id: Date.now().toString(), text: textarea.value, user: state.user.nickname, likes: 0, timestamp: new Date().toISOString(), dateString: new Date().toLocaleDateString(), sentiment: analyzeSentiment(textarea.value), isPublic: container.querySelector('#is-public').checked });
+        navigate('home');
+      };
     } else {
       container.innerHTML = `<h2 class="section-title">📰 뉴스 공유</h2><div class="auth-card"><input type="text" id="news-url" placeholder="URL 주소"><textarea id="news-comment" placeholder="의견"></textarea><button id="news-post-btn">공유</button></div>`;
       container.querySelector('#news-post-btn').onclick = () => { const url = container.querySelector('#news-url').value; if (!url) return; state.news.unshift({ id: Date.now().toString(), url, comment: container.querySelector('#news-comment').value, user: state.user.nickname, timestamp: new Date().toISOString(), empathy: 0, nonEmpathy: 0 }); navigate('home'); };
