@@ -51,13 +51,15 @@ async function fetchLatestHeadlines() {
     );
     const results = await Promise.all(fetchPromises);
     const allItems = results.flat()
-      .filter(item => item.title)
+      .filter(item => item.title && item.link)
       .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    
     if (allItems.length === 0) throw new Error('No news');
-    return groupSimilarNews(allItems).slice(0, 25);
+    // 최신 뉴스 10개만 추출 (그룹화 포함)
+    return groupSimilarNews(allItems).slice(0, 10);
   } catch (e) {
     console.warn("뉴스 로딩 실패, 샘플 사용:", e);
-    return [{ title: "[속보] 감정 일기장 실시간 뉴스 시스템 가동", link: "#", pubDate: new Date().toISOString(), related: [] }];
+    return [{ title: "[속보] 실시간 뉴스 시스템이 업데이트 되었습니다.", link: "https://news.naver.com", pubDate: new Date().toISOString(), related: [] }];
   }
 }
 
@@ -188,25 +190,36 @@ async function renderHome() {
   const newsListCont = div.querySelector('#newspaper-articles');
   fetchLatestHeadlines().then(articles => {
     newsListCont.innerHTML = '';
-    articles.forEach(item => {
+    
+    // 정확히 10개만 노출
+    const top10 = articles.slice(0, 10);
+
+    top10.forEach(item => {
       const article = document.createElement('div');
       article.className = 'article-card';
       article.style.padding = '0.8rem 0';
+      article.style.position = 'relative';
+      
       const source = extractSource(item.link);
       const uniqueRelated = [...new Set(item.related.map(r => extractSource(r.link)))].filter(s => s !== source);
+      
       article.innerHTML = `
         <div class="headline-container" style="display:flex; flex-direction:column; gap:0.25rem;">
-          <a href="${item.link}" target="_blank" class="article-headline" style="font-size:1.1rem; border-left:4px solid #1a1a1a; padding-left:12px; line-height:1.3;">${item.title}</a>
+          <a href="${item.link}" target="_blank" class="article-headline" rel="noopener noreferrer" style="font-size:1.15rem; border-left:4px solid #1a1a1a; padding-left:12px; line-height:1.3; cursor:pointer; display:block;">
+            ${item.title}
+          </a>
           <div class="related-info" style="font-size:0.7rem; margin-left:12px; color:#666; display:flex; align-items:center; gap:0.5rem;">
             <span style="color:#ff4b2b; font-weight:bold;">${source}</span>
             ${uniqueRelated.length > 0 ? ` 외 ${uniqueRelated.join(', ')}` : ''}
             <span style="margin-left:auto;">${new Date(item.pubDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-            <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}" style="border:none; background:none; color:var(--primary); cursor:pointer;">💬 토론</button>
+            <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}" style="border:none; background:none; color:var(--primary); cursor:pointer; font-weight:bold;">💬 토론</button>
           </div>
         </div>
       `;
+      
       article.querySelector('.share-to-disc-btn').onclick = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         const { url, title } = e.target.dataset;
         const comment = prompt(`"${title}"\n의견을 남겨주세요:`);
         if (comment !== null) {
@@ -257,11 +270,7 @@ function filterMyHistory() {
 }
 
 function renderPost() {
-  const quickEmotions = [
-    { emoji: '😊', label: '행복' }, { emoji: '🥰', label: '사랑' }, { emoji: '🥳', label: '신나' }, 
-    { emoji: '😌', label: '편안' }, { emoji: '😴', label: '졸려' }, { emoji: '😢', label: '슬픔' }, 
-    { emoji: '😭', label: '눈물' }, { emoji: '😡', label: '화남' }, { emoji: '🤔', label: '고민' }
-  ];
+  const quickEmotions = [{ emoji: '😊', label: '행복' }, { emoji: '🥰', label: '사랑' }, { emoji: '🥳', label: '신나' }, { emoji: '😌', label: '편안' }, { emoji: '😴', label: '졸려' }, { emoji: '😢', label: '슬픔' }, { emoji: '😭', label: '눈물' }, { emoji: '😡', label: '화남' }, { emoji: '🤔', label: '고민' }];
   const div = document.createElement('div');
   div.innerHTML = `<div class="post-tabs" style="display:flex; gap:1rem; margin-bottom:1rem;"><button class="tab-btn active" data-tab="diary">일기</button><button class="tab-btn" data-tab="news">뉴스</button></div><div id="tab-content"></div><div id="sentiment-preview"></div>`;
   const tabs = div.querySelectorAll('.tab-btn');
