@@ -229,8 +229,9 @@ async function renderHome() {
         <div id="newspaper-articles"><div class="loader-container"><div class="loader"></div></div></div>
       </div>
       
-      <div class="main-tabs" style="margin-top: 2rem;">
-        <button class="main-tab-btn active">뉴스 토론방</button>
+      <div class="newspaper-section-header">
+        <h2 class="newspaper-section-title">News Discussion</h2>
+        <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-top: 0.2rem; font-family: 'Georgia', serif;">Public Opinions & Empathy</div>
       </div>
       <div id="news-list"></div>
     </main>
