@@ -505,24 +505,63 @@ button:active {
   border-left: 4px solid var(--primary);
 }
 
-/* Best Columns Layout */
-.best-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  margin-bottom: 3rem;
+/* Split Dashboard Layout */
+#app {
+  max-width: 1400px; /* Wider for dashboard */
+  margin: 0 auto;
+  padding: 1rem;
 }
 
-.best-column {
+.dashboard-container {
+  display: grid;
+  grid-template-columns: 400px 1fr; /* Fixed width for diary, fluid for news */
+  gap: 2rem;
+  height: calc(100vh - 2rem);
+  overflow: hidden;
+}
+
+/* Left Column: Diary */
+.diary-column {
+  background: white;
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+  border: 1px solid oklch(90% 0.01 250);
 }
 
-.best-column .section-title {
-  font-size: 1.2rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid var(--primary);
-  margin-bottom: 1.5rem;
+.diary-column::-webkit-scrollbar { width: 5px; }
+.diary-column::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+/* Right Column: News */
+.news-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+}
+
+.news-column::-webkit-scrollbar { width: 5px; }
+.news-column::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 10px; }
+
+/* Repositing Best Grid inside columns if needed, or removing it */
+.best-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 1024px) {
+  .dashboard-container {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+  #app { height: auto; }
 }
 
 .live-badge {

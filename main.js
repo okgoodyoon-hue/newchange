@@ -78,11 +78,10 @@ const newsCategories = [
 
 let selectedCategory = 'top';
 
-// --- 뉴스 가져오기 및 그룹화 로직 ---
+// --- 뉴스 가져오기 로직 ---
 async function fetchLiveNews(catId = 'top') {
   const urls = newsSources[catId] || newsSources.top;
-  const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3'; // rss2json key
-  
+  const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3';
   try {
     const fetchPromises = urls.map(url => 
       fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=${API_KEY}&t=${Date.now()}`)
@@ -90,15 +89,13 @@ async function fetchLiveNews(catId = 'top') {
         .then(data => data.status === 'ok' ? data.items : [])
         .catch(() => [])
     );
-
     const results = await Promise.all(fetchPromises);
     const allItems = results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-    
     if (allItems.length === 0) throw new Error('No news');
     return groupSimilarNews(allItems);
   } catch (e) {
     console.warn("뉴스 로딩 실패, 샘플 데이터 사용:", e);
-    return [{ title: "[공지] 뉴스 통합 시스템 점검 중입니다.", link: "#", pubDate: new Date().toISOString(), description: "잠시 후 다시 시도해주세요.", author: "운영팀", related: [] }];
+    return [{ title: "[공지] 뉴스 시스템 점검 중입니다.", link: "#", pubDate: new Date().toISOString(), description: "잠시 후 시도해주세요.", author: "운영팀", related: [] }];
   }
 }
 
@@ -192,34 +189,69 @@ function renderAuth() {
   appContainer.appendChild(div);
 }
 
+// --- View: Home (Split Layout) ---
 async function renderHome() {
   const div = document.createElement('div');
+  div.className = 'dashboard-container';
   div.innerHTML = `
-    <div class="newspaper-container">
-      <div class="newspaper-header">
-        <h1 class="newspaper-title">The Daily News</h1>
-        <div class="newspaper-meta">
-          <span>제 ${Math.floor(Date.now()/1000000)}호</span>
-          <span>${new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-          <span>대한민국 통합 뉴스룸</span>
+    <aside class="diary-column">
+      <h2 class="section-title">📅 나의 기록실</h2>
+      <div class="search-container">
+        <input type="text" id="search-bar" class="search-input" placeholder="기억을 검색하세요..." value="${state.searchQuery}">
+      </div>
+      <div id="calendar-container" class="calendar-wrapper"></div>
+      <div id="my-list"></div>
+      
+      <div class="best-diary-section">
+        <h2 class="section-title" style="margin-top: 2rem;">🏆 인기 일기</h2>
+        <div id="best-diary-list"></div>
+      </div>
+
+      <div class="public-feed-section">
+        <h2 class="section-title" style="margin-top: 2rem;">🌊 공개 피드</h2>
+        <div id="feed-list"></div>
+      </div>
+    </aside>
+
+    <main class="news-column">
+      <div class="newspaper-container">
+        <div class="newspaper-header">
+          <h1 class="newspaper-title">The Daily News</h1>
+          <div class="newspaper-meta">
+            <span>제 ${Math.floor(Date.now()/1000000)}호</span>
+            <span>${new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <span>통합 뉴스룸</span>
+          </div>
         </div>
+        <div class="news-categories">
+          ${newsCategories.map(cat => `<span class="cat-tag ${selectedCategory === cat.id ? 'active' : ''}" data-id="${cat.id}">${cat.name}</span>`).join('')}
+        </div>
+        <div id="newspaper-articles"><div class="loader-container"><div class="loader"></div></div></div>
       </div>
-      <div class="news-categories">
-        ${newsCategories.map(cat => `<span class="cat-tag ${selectedCategory === cat.id ? 'active' : ''}" data-id="${cat.id}">${cat.name}</span>`).join('')}
+      
+      <div class="main-tabs" style="margin-top: 2rem;">
+        <button class="main-tab-btn active">뉴스 토론방</button>
       </div>
-      <div class="best-grid">
-        <div class="best-column"><div id="newspaper-articles"><div class="loader-container"><div class="loader"></div></div></div></div>
-        <div class="best-column" style="font-family:'Inter',sans-serif;"><h2 class="section-title">🏆 베스트 일기</h2><div id="best-diary-list"></div></div>
-      </div>
-    </div>
-    <div class="main-tabs" style="font-family:'Inter',sans-serif;">
-      <button class="main-tab-btn ${state.mainTab === 'diary' ? 'active' : ''}" data-tab="diary">기록 & 피드</button>
-      <button class="main-tab-btn ${state.mainTab === 'news' ? 'active' : ''}" data-tab="news">뉴스 토론</button>
-    </div>
-    <div id="main-content"></div>
+      <div id="news-list"></div>
+    </main>
   `;
   appContainer.appendChild(div);
 
+  // Diary Logic (Left)
+  renderCalendar(div.querySelector('#calendar-container'));
+  const searchInput = div.querySelector('#search-bar');
+  searchInput.oninput = (e) => { state.searchQuery = e.target.value.toLowerCase(); filterMyHistory(); };
+  filterMyHistory();
+
+  const bestDiaryCont = div.querySelector('#best-diary-list');
+  const bestDiary = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 3);
+  renderListInside(bestDiaryCont, bestDiary.length ? bestDiary : mockBest10().slice(0, 2));
+
+  const publicFeedCont = div.querySelector('#feed-list');
+  const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname).slice(0, 5);
+  renderListInside(publicFeedCont, publicFeed.length ? publicFeed : mockFeed());
+
+  // News Logic (Right)
   div.querySelectorAll('.cat-tag').forEach(tag => {
     tag.onclick = () => { selectedCategory = tag.dataset.id; render(); };
   });
@@ -228,14 +260,12 @@ async function renderHome() {
   fetchLiveNews(selectedCategory).then(articles => {
     newsListCont.innerHTML = '';
     const isTop = selectedCategory === 'top';
-    const items = articles.slice(0, 15);
-    items.forEach(item => {
+    articles.slice(0, 15).forEach(item => {
       const article = document.createElement('div');
       article.className = 'article-card';
       if (isTop) article.style.padding = '0.75rem 0';
       const source = extractSource(item.link);
       const uniqueRelated = [...new Set(item.related.map(r => extractSource(r.link)))].filter(s => s !== source);
-      
       article.innerHTML = `
         <div class="headline-container" style="display:flex; flex-direction:column; gap:0.25rem;">
           <a href="${item.link}" target="_blank" class="article-headline" style="${isTop ? 'font-size:1.1rem; border-left:4px solid #1a1a1a; padding-left:12px;' : ''}">${item.title}</a>
@@ -244,7 +274,7 @@ async function renderHome() {
             ${uniqueRelated.length > 0 ? ` 외 <span style="font-weight:bold; color:#1a1a1a;">${uniqueRelated.join(', ')}</span> 보도` : ''}
           </div>
         </div>
-        ${isTop ? '' : `<div class="article-content">${item.description.replace(/<[^>]*>?/gm, '').substring(0, 150)}...</div>`}
+        ${isTop ? '' : `<div class="article-content" style="column-count:1;">${item.description.replace(/<[^>]*>?/gm, '').substring(0, 150)}...</div>`}
         <div class="article-footer">
           <div class="article-meta-info"><span>${new Date(item.pubDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span></div>
           <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}">💬 토론</button>
@@ -256,48 +286,25 @@ async function renderHome() {
         const comment = prompt(`"${title}"\n의견을 남겨주세요:`);
         if (comment !== null) {
           state.news.unshift({ id: Date.now().toString(), url, title, comment: comment || "공감합니다!", user: state.user.nickname, timestamp: new Date().toISOString(), empathy: 0, nonEmpathy: 0 });
-          state.mainTab = 'news'; render();
+          render();
         }
       };
       newsListCont.appendChild(article);
     });
   });
 
-  const bestDiaryCont = div.querySelector('#best-diary-list');
-  const bestDiary = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 3);
-  (bestDiary.length ? bestDiary : mockBest10().slice(0, 2)).forEach(item => {
-    const card = document.createElement('diary-card'); card.setAttribute('data', JSON.stringify(item)); bestDiaryCont.appendChild(card);
+  const newsDiscCont = div.querySelector('#news-list');
+  const newsItems = state.news.length ? state.news : mockNews();
+  newsItems.forEach(item => {
+    const card = document.createElement('news-card'); card.setAttribute('data', JSON.stringify(item)); newsDiscCont.appendChild(card);
   });
-
-  div.querySelectorAll('.main-tab-btn').forEach(btn => {
-    btn.onclick = () => { state.mainTab = btn.dataset.tab; render(); };
-  });
-  renderMainContent(div.querySelector('#main-content'));
 }
 
-function renderMainContent(container) {
-  if (state.mainTab === 'diary') {
-    container.innerHTML = `
-      <section class="my-history"><h2 class="section-title">📅 나의 기록</h2>
-        <div class="search-container"><input type="text" id="search-bar" class="search-input" placeholder="검색..." value="${state.searchQuery}"></div>
-        <div id="calendar-container" class="calendar-wrapper"></div><div id="my-list"></div>
-      </section>
-      <section class="recent-feed"><h2 class="section-title">🌊 공개 피드</h2><div id="feed-list"></div></section>
-    `;
-    renderCalendar(container.querySelector('#calendar-container'));
-    const searchInput = container.querySelector('#search-bar');
-    searchInput.oninput = (e) => { state.searchQuery = e.target.value.toLowerCase(); filterMyHistory(); };
-    filterMyHistory();
-    const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname);
-    renderList('feed-list', publicFeed.length ? publicFeed : mockFeed());
-  } else {
-    container.innerHTML = `<section class="news-feed"><h2 class="section-title">📰 뉴스 토론방</h2><div id="news-list"></div></section>`;
-    const newsContainer = container.querySelector('#news-list');
-    const newsItems = state.news.length ? state.news : mockNews();
-    newsItems.forEach(item => {
-      const card = document.createElement('news-card'); card.setAttribute('data', JSON.stringify(item)); newsContainer.appendChild(card);
-    });
-  }
+function renderListInside(container, items) {
+  container.innerHTML = '';
+  items.forEach(item => {
+    const card = document.createElement('diary-card'); card.setAttribute('data', JSON.stringify(item)); container.appendChild(card);
+  });
 }
 
 function renderCalendar(container) {
@@ -323,11 +330,6 @@ function filterMyHistory() {
   container.innerHTML = '';
   if (filtered.length === 0) container.innerHTML = `<div class="empty-state">결과 없음</div>`;
   else filtered.forEach(item => { const card = document.createElement('diary-card'); card.setAttribute('data', JSON.stringify(item)); container.appendChild(card); });
-}
-
-function renderList(id, items) {
-  const container = document.getElementById(id); if (!container || !items.length) return;
-  items.forEach(item => { const card = document.createElement('diary-card'); card.setAttribute('data', JSON.stringify(item)); container.appendChild(card); });
 }
 
 function renderPost() {
