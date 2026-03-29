@@ -29,7 +29,8 @@ const state = {
   best10: [],
   news: [],
   selectedDate: null,
-  searchQuery: ''
+  searchQuery: '',
+  mainTab: 'diary'
 };
 
 // --- View Router ---
@@ -100,53 +101,71 @@ function renderAuth() {
 async function renderHome() {
   const div = document.createElement('div');
   div.innerHTML = `
-    <section class="my-history">
-      <h2 class="section-title">📅 My History</h2>
-      <div class="search-container">
-        <input type="text" id="search-bar" class="search-input" placeholder="Search keywords..." value="${state.searchQuery}">
-      </div>
-      <div id="calendar-container" class="calendar-wrapper"></div>
-      <div id="my-list"></div>
-    </section>
-
-    <section class="news-feed">
-      <h2 class="section-title">📰 Empathy News</h2>
-      <div id="news-list"></div>
-    </section>
-
-    <section class="best-10">
-      <h2 class="section-title">✨ Best 10</h2>
-      <div id="best-10-list"></div>
-    </section>
-
-    <section class="recent-feed">
-      <h2 class="section-title">🌊 Public Feed</h2>
-      <div id="feed-list"></div>
-    </section>
+    <div class="main-tabs">
+      <button class="main-tab-btn ${state.mainTab === 'diary' ? 'active' : ''}" data-tab="diary">Diaries</button>
+      <button class="main-tab-btn ${state.mainTab === 'news' ? 'active' : ''}" data-tab="news">News Empathy</button>
+    </div>
+    <div id="main-content"></div>
   `;
   appContainer.appendChild(div);
-  renderCalendar(div.querySelector('#calendar-container'));
-  
-  const searchInput = div.querySelector('#search-bar');
-  searchInput.oninput = (e) => {
-    state.searchQuery = e.target.value.toLowerCase();
-    filterMyHistory();
-  };
 
-  filterMyHistory();
-
-  const newsContainer = div.querySelector('#news-list');
-  const newsItems = state.news.length ? state.news : mockNews();
-  newsItems.forEach(item => {
-    const card = document.createElement('news-card');
-    card.setAttribute('data', JSON.stringify(item));
-    newsContainer.appendChild(card);
+  div.querySelectorAll('.main-tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      state.mainTab = btn.dataset.tab;
+      render();
+    };
   });
 
-  const best10 = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 10);
-  const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname);
-  renderList('best-10-list', best10.length ? best10 : mockBest10());
-  renderList('feed-list', publicFeed.length ? publicFeed : mockFeed());
+  renderMainContent(div.querySelector('#main-content'));
+}
+
+function renderMainContent(container) {
+  if (state.mainTab === 'diary') {
+    container.innerHTML = `
+      <section class="my-history">
+        <h2 class="section-title">📅 My History</h2>
+        <div class="search-container">
+          <input type="text" id="search-bar" class="search-input" placeholder="Search keywords..." value="${state.searchQuery}">
+        </div>
+        <div id="calendar-container" class="calendar-wrapper"></div>
+        <div id="my-list"></div>
+      </section>
+      <section class="best-10">
+        <h2 class="section-title">✨ Best 10</h2>
+        <div id="best-10-list"></div>
+      </section>
+      <section class="recent-feed">
+        <h2 class="section-title">🌊 Public Feed</h2>
+        <div id="feed-list"></div>
+      </section>
+    `;
+    renderCalendar(container.querySelector('#calendar-container'));
+    const searchInput = container.querySelector('#search-bar');
+    searchInput.oninput = (e) => {
+      state.searchQuery = e.target.value.toLowerCase();
+      filterMyHistory();
+    };
+    filterMyHistory();
+
+    const best10 = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 10);
+    const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname);
+    renderList('best-10-list', best10.length ? best10 : mockBest10());
+    renderList('feed-list', publicFeed.length ? publicFeed : mockFeed());
+  } else {
+    container.innerHTML = `
+      <section class="news-feed">
+        <h2 class="section-title">📰 Empathy News</h2>
+        <div id="news-list"></div>
+      </section>
+    `;
+    const newsContainer = container.querySelector('#news-list');
+    const newsItems = state.news.length ? state.news : mockNews();
+    newsItems.forEach(item => {
+      const card = document.createElement('news-card');
+      card.setAttribute('data', JSON.stringify(item));
+      newsContainer.appendChild(card);
+    });
+  }
 }
 
 function renderCalendar(container) {
@@ -324,14 +343,23 @@ customElements.define('diary-card', DiaryCard);
 class NewsCard extends HTMLElement {
   connectedCallback() {
     const data = JSON.parse(this.getAttribute('data'));
+    let displayTitle = data.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+    if (displayTitle.length > 30) displayTitle = displayTitle.substring(0, 30) + '...';
+
     this.innerHTML = `
       <div class="news-card">
-        <div class="card-header"><span class="card-user">@${data.user} Shared</span></div>
-        <a href="${data.url}" target="_blank" class="news-link">🔗 ${data.url}</a>
-        <div class="card-content">${data.comment}</div>
-        <div class="empathy-container">
-          <button class="emp-btn agree">👍 Empathy ${data.empathy}</button>
-          <button class="emp-btn disagree">👎 Non-Empathy ${data.nonEmpathy}</button>
+        <div class="news-card-header">
+          <a href="${data.url}" target="_blank" class="news-link-display">${displayTitle}</a>
+          <div class="card-date" style="color:rgba(255,255,255,0.7); font-size:0.8rem; margin-top:0.5rem;">
+            Shared by @${data.user}
+          </div>
+        </div>
+        <div class="news-card-body">
+          ${data.comment ? `<div class="news-comment-box">${data.comment}</div>` : ''}
+          <div class="empathy-container">
+            <button class="emp-btn agree">👍 Empathy ${data.empathy}</button>
+            <button class="emp-btn disagree">👎 Non-Empathy ${data.nonEmpathy}</button>
+          </div>
         </div>
       </div>
     `;
