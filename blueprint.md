@@ -8,6 +8,7 @@ A minimalist, high-impact social diary application where users share 100-charact
 ### **1. Core User Experience**
 - **Nickname Entry:** Persistent nickname-based entry stored in `localStorage`.
 - **100-Character Diary:** Real-time character counter and validation.
+- **Daily Archiving:** Diaries are saved with a timestamp, allowing users to view their history chronologically.
 - **Rich Media Support:** Placeholders and UI for photo and voice uploads.
 - **Privacy Control:** Individual entries can be set to Public or Private.
 
@@ -15,7 +16,7 @@ A minimalist, high-impact social diary application where users share 100-charact
 - **Like System:** Interactive "Heart" button with real-time count updates.
 - **Best 10 Leaderboard:** Automatic sorting of public entries by like count.
 - **Mutual Follow (맞팔):** Two-way follow system implemented in the UI.
-- **Real-Time Feed:** Instant display of new public entries.
+- **Real-Time Feed:** Instant display of new public entries using Firestore listeners.
 
 ### **3. Intelligence & Aesthetics**
 - **Emotion Index:** Rule-based analysis of 100+ keywords and emojis to generate a sentiment profile (Joy, Sadness, Anger, Calm).

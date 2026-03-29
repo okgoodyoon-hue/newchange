@@ -27,7 +27,9 @@ let currentView = 'auth';
 const state = {
   user: null,
   entries: [],
-  best10: []
+  best10: [],
+  selectedDate: null,
+  searchQuery: ''
 };
 
 // --- View Router ---
@@ -123,33 +125,112 @@ function renderAuth() {
 async function renderHome() {
   const div = document.createElement('div');
   div.innerHTML = `
+    <section class="my-history">
+      <h2 class="section-title">📅 My History</h2>
+      <div class="search-container">
+        <input type="text" id="search-bar" class="search-input" placeholder="Search keywords..." value="${state.searchQuery}">
+      </div>
+      <div id="calendar-container" class="calendar-wrapper"></div>
+      <div id="my-list"></div>
+    </section>
     <section class="best-10">
       <h2 class="section-title">✨ Best 10</h2>
       <div id="best-10-list"></div>
     </section>
     <section class="recent-feed">
-      <h2 class="section-title">🌊 Public Diaries</h2>
+      <h2 class="section-title">🌊 Public Feed</h2>
       <div id="feed-list"></div>
     </section>
   `;
   
   appContainer.appendChild(div);
   
+  renderCalendar(div.querySelector('#calendar-container'));
+  
+  const searchInput = div.querySelector('#search-bar');
+  searchInput.oninput = (e) => {
+    state.searchQuery = e.target.value.toLowerCase();
+    filterMyHistory();
+  };
+
+  // Initial lists
+  filterMyHistory();
+  
+  // Best 10 & Public Feed (independent of personal calendar/search)
   const best10 = [...state.entries]
     .filter(e => e.isPublic)
     .sort((a, b) => b.likes - a.likes)
     .slice(0, 10);
-
-  const publicFeed = state.entries.filter(e => e.isPublic);
+  const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname);
 
   renderList('best-10-list', best10.length ? best10 : mockBest10());
   renderList('feed-list', publicFeed.length ? publicFeed : mockFeed());
+}
+
+function renderCalendar(container) {
+  const scroll = document.createElement('div');
+  scroll.className = 'calendar-scroll';
+  
+  const today = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dateStr = date.toLocaleDateString();
+    
+    const item = document.createElement('div');
+    item.className = `date-item ${state.selectedDate === dateStr ? 'active' : ''}`;
+    item.innerHTML = `
+      <span class="day">${date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+      <span class="date">${date.getDate()}</span>
+    `;
+    
+    item.onclick = () => {
+      state.selectedDate = (state.selectedDate === dateStr) ? null : dateStr;
+      render();
+    };
+    scroll.appendChild(item);
+  }
+  container.appendChild(scroll);
+  setTimeout(() => scroll.scrollLeft = scroll.scrollWidth, 100);
+}
+
+function filterMyHistory() {
+  const container = document.getElementById('my-list');
+  if (!container) return;
+
+  let filtered = state.entries.filter(e => e.user === state.user.nickname);
+
+  if (state.selectedDate) {
+    filtered = filtered.filter(e => e.dateString === state.selectedDate);
+  }
+
+  if (state.searchQuery) {
+    filtered = filtered.filter(e => e.text.toLowerCase().includes(state.searchQuery));
+  }
+
+  filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  
+  container.innerHTML = '';
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state">No matching entries found.</div>`;
+  } else {
+    filtered.forEach(item => {
+      const card = document.createElement('diary-card');
+      card.setAttribute('data', JSON.stringify(item));
+      container.appendChild(card);
+    });
+  }
 }
 
 function renderList(id, items) {
   const container = document.getElementById(id);
   if (!container) return;
   
+  if (items.length === 0) {
+    container.innerHTML = `<div class="empty-state">No entries yet. Write your first diary!</div>`;
+    return;
+  }
+
   items.forEach(item => {
     const card = document.createElement('diary-card');
     card.setAttribute('data', JSON.stringify(item));
@@ -175,7 +256,7 @@ function renderPost() {
         <label><input type="checkbox" id="is-public" checked> Public Entry</label>
       </div>
 
-      <button id="post-btn">Save Entry</button>
+      <button id="post-btn">Save for Today</button>
     </div>
     <div id="sentiment-preview"></div>
   `;
@@ -187,19 +268,28 @@ function renderPost() {
     renderSentiment(div.querySelector('#sentiment-preview'), sentiment);
   };
 
-  div.querySelector('#post-btn').onclick = () => {
+  div.querySelector('#post-btn').onclick = async () => {
     const text = textarea.value;
     if (!text) return;
     
+    // Check if user already posted today (Optional, but good for "Daily" feel)
     const entry = {
       id: Date.now().toString(),
       text,
       user: state.user.nickname,
       likes: 0,
       timestamp: new Date().toISOString(),
+      dateString: new Date().toLocaleDateString(),
       sentiment: analyzeSentiment(text),
       isPublic: div.querySelector('#is-public').checked
     };
+    
+    // Firestore implementation (requires valid config)
+    try {
+      await addDoc(collection(db, "diaries"), entry);
+    } catch (e) {
+      console.warn("Firestore not configured, saving locally only.");
+    }
     
     state.entries.unshift(entry);
     navigate('home');

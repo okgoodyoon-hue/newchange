@@ -331,3 +331,97 @@ button:active {
   height: 32px;
   margin-bottom: 1rem;
 }
+
+/* Search & Filter */
+.search-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* Horizontal Calendar */
+.calendar-wrapper {
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.calendar-scroll {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem 1.5rem;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.calendar-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.calendar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.calendar-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+
+.date-item {
+  min-width: 55px;
+  height: 75px;
+  background: white;
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s;
+  border: 1px solid transparent;
+}
+
+.date-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.date-item.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: var(--shadow-glow);
+}
+
+.date-item .day {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.date-item .date {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.date-item.active .day {
+  opacity: 1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  #app {
+    padding: 1rem;
+  }
+  .nav-bar {
+    width: 90%;
+    bottom: 1rem;
+    justify-content: space-around;
+  }
+}
