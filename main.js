@@ -5,7 +5,6 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { analyzeSentiment } from './utils/sentiment.js';
 
 // --- Firebase Configuration ---
-// Replace with your actual config
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -28,6 +27,7 @@ const state = {
   user: null,
   entries: [],
   best10: [],
+  news: [],
   selectedDate: null,
   searchQuery: ''
 };
@@ -42,32 +42,18 @@ function navigate(view) {
 
 function render() {
   appContainer.innerHTML = '';
-  
   if (!state.user && currentView !== 'auth') {
     renderAuth();
     return;
   }
-
   switch (currentView) {
-    case 'auth':
-      renderAuth();
-      break;
-    case 'home':
-      renderHome();
-      break;
-    case 'post':
-      renderPost();
-      break;
-    case 'chat':
-      renderChat();
-      break;
-    default:
-      renderHome();
+    case 'auth': renderAuth(); break;
+    case 'home': renderHome(); break;
+    case 'post': renderPost(); break;
+    case 'chat': renderChat(); break;
+    default: renderHome();
   }
-
-  if (state.user) {
-    renderNav();
-  }
+  if (state.user) renderNav();
 }
 
 // --- Component: Nav ---
@@ -79,14 +65,12 @@ function renderNav() {
     <a href="#" class="nav-item ${currentView === 'post' ? 'active' : ''}" data-view="post">Post</a>
     <a href="#" class="nav-item ${currentView === 'chat' ? 'active' : ''}" data-view="chat">Chat</a>
   `;
-  
   nav.querySelectorAll('.nav-item').forEach(item => {
     item.onclick = (e) => {
       e.preventDefault();
       navigate(item.dataset.view);
     };
   });
-  
   appContainer.appendChild(nav);
 }
 
@@ -102,22 +86,13 @@ function renderAuth() {
       <button id="start-btn">Start Diary</button>
     </div>
   `;
-  
   div.querySelector('#start-btn').onclick = async () => {
     const nickname = div.querySelector('#nickname').value.trim();
     if (!nickname) return alert('Please enter a nickname');
-    
-    try {
-      // For demo: Anonymous sign in + store nickname in local state
-      // Real app would store in Firestore 'users' collection
-      state.user = { nickname, id: Date.now().toString() };
-      localStorage.setItem('diary_user', JSON.stringify(state.user));
-      navigate('home');
-    } catch (e) {
-      console.error(e);
-    }
+    state.user = { nickname, id: Date.now().toString(), likedEntries: [], following: [] };
+    localStorage.setItem('diary_user', JSON.stringify(state.user));
+    navigate('home');
   };
-  
   appContainer.appendChild(div);
 }
 
@@ -133,18 +108,23 @@ async function renderHome() {
       <div id="calendar-container" class="calendar-wrapper"></div>
       <div id="my-list"></div>
     </section>
+
+    <section class="news-feed">
+      <h2 class="section-title">📰 Empathy News</h2>
+      <div id="news-list"></div>
+    </section>
+
     <section class="best-10">
       <h2 class="section-title">✨ Best 10</h2>
       <div id="best-10-list"></div>
     </section>
+
     <section class="recent-feed">
       <h2 class="section-title">🌊 Public Feed</h2>
       <div id="feed-list"></div>
     </section>
   `;
-  
   appContainer.appendChild(div);
-  
   renderCalendar(div.querySelector('#calendar-container'));
   
   const searchInput = div.querySelector('#search-bar');
@@ -153,16 +133,18 @@ async function renderHome() {
     filterMyHistory();
   };
 
-  // Initial lists
   filterMyHistory();
-  
-  // Best 10 & Public Feed (independent of personal calendar/search)
-  const best10 = [...state.entries]
-    .filter(e => e.isPublic)
-    .sort((a, b) => b.likes - a.likes)
-    .slice(0, 10);
-  const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname);
 
+  const newsContainer = div.querySelector('#news-list');
+  const newsItems = state.news.length ? state.news : mockNews();
+  newsItems.forEach(item => {
+    const card = document.createElement('news-card');
+    card.setAttribute('data', JSON.stringify(item));
+    newsContainer.appendChild(card);
+  });
+
+  const best10 = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 10);
+  const publicFeed = state.entries.filter(e => e.isPublic && e.user !== state.user.nickname);
   renderList('best-10-list', best10.length ? best10 : mockBest10());
   renderList('feed-list', publicFeed.length ? publicFeed : mockFeed());
 }
@@ -170,20 +152,14 @@ async function renderHome() {
 function renderCalendar(container) {
   const scroll = document.createElement('div');
   scroll.className = 'calendar-scroll';
-  
   const today = new Date();
   for (let i = 13; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(today.getDate() - i);
     const dateStr = date.toLocaleDateString();
-    
     const item = document.createElement('div');
     item.className = `date-item ${state.selectedDate === dateStr ? 'active' : ''}`;
-    item.innerHTML = `
-      <span class="day">${date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-      <span class="date">${date.getDate()}</span>
-    `;
-    
+    item.innerHTML = `<span class="day">${date.toLocaleDateString('en-US', { weekday: 'short' })}</span><span class="date">${date.getDate()}</span>`;
     item.onclick = () => {
       state.selectedDate = (state.selectedDate === dateStr) ? null : dateStr;
       render();
@@ -197,19 +173,10 @@ function renderCalendar(container) {
 function filterMyHistory() {
   const container = document.getElementById('my-list');
   if (!container) return;
-
   let filtered = state.entries.filter(e => e.user === state.user.nickname);
-
-  if (state.selectedDate) {
-    filtered = filtered.filter(e => e.dateString === state.selectedDate);
-  }
-
-  if (state.searchQuery) {
-    filtered = filtered.filter(e => e.text.toLowerCase().includes(state.searchQuery));
-  }
-
+  if (state.selectedDate) filtered = filtered.filter(e => e.dateString === state.selectedDate);
+  if (state.searchQuery) filtered = filtered.filter(e => e.text.toLowerCase().includes(state.searchQuery));
   filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  
   container.innerHTML = '';
   if (filtered.length === 0) {
     container.innerHTML = `<div class="empty-state">No matching entries found.</div>`;
@@ -224,13 +191,7 @@ function filterMyHistory() {
 
 function renderList(id, items) {
   const container = document.getElementById(id);
-  if (!container) return;
-  
-  if (items.length === 0) {
-    container.innerHTML = `<div class="empty-state">No entries yet. Write your first diary!</div>`;
-    return;
-  }
-
+  if (!container || !items.length) return;
   items.forEach(item => {
     const card = document.createElement('diary-card');
     card.setAttribute('data', JSON.stringify(item));
@@ -242,177 +203,148 @@ function renderList(id, items) {
 function renderPost() {
   const div = document.createElement('div');
   div.innerHTML = `
-    <h2 class="section-title">✍️ New Entry</h2>
-    <div class="auth-card">
-      <textarea id="diary-text" maxlength="100" placeholder="How was your day? (Max 100 chars)"></textarea>
-      <div class="char-count">0/100</div>
-      
-      <div class="media-inputs">
-        <label>Photo: <input type="file" id="photo-input" accept="image/*"></label>
-        <button id="record-btn">🎤 Record Voice</button>
-      </div>
-
-      <div class="privacy-toggle">
-        <label><input type="checkbox" id="is-public" checked> Public Entry</label>
-      </div>
-
-      <button id="post-btn">Save for Today</button>
+    <div class="post-tabs" style="display:flex; gap:1rem; margin-bottom:1rem;">
+      <button class="tab-btn active" data-tab="diary">Diary</button>
+      <button class="tab-btn" data-tab="news">News Share</button>
     </div>
+    <div id="tab-content"></div>
     <div id="sentiment-preview"></div>
   `;
 
-  const textarea = div.querySelector('#diary-text');
-  textarea.oninput = () => {
-    div.querySelector('.char-count').textContent = `${textarea.value.length}/100`;
-    const sentiment = analyzeSentiment(textarea.value);
-    renderSentiment(div.querySelector('#sentiment-preview'), sentiment);
-  };
-
-  div.querySelector('#post-btn').onclick = async () => {
-    const text = textarea.value;
-    if (!text) return;
-    
-    // Check if user already posted today (Optional, but good for "Daily" feel)
-    const entry = {
-      id: Date.now().toString(),
-      text,
-      user: state.user.nickname,
-      likes: 0,
-      timestamp: new Date().toISOString(),
-      dateString: new Date().toLocaleDateString(),
-      sentiment: analyzeSentiment(text),
-      isPublic: div.querySelector('#is-public').checked
+  const tabs = div.querySelectorAll('.tab-btn');
+  tabs.forEach(tab => {
+    tab.onclick = () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderTabContent(div.querySelector('#tab-content'), tab.dataset.tab);
     };
-    
-    // Firestore implementation (requires valid config)
-    try {
-      await addDoc(collection(db, "diaries"), entry);
-    } catch (e) {
-      console.warn("Firestore not configured, saving locally only.");
-    }
-    
-    state.entries.unshift(entry);
-    navigate('home');
-  };
+  });
 
+  function renderTabContent(container, type) {
+    container.innerHTML = '';
+    if (type === 'diary') {
+      container.innerHTML = `
+        <h2 class="section-title">✍️ New Entry</h2>
+        <div class="auth-card">
+          <textarea id="diary-text" maxlength="100" placeholder="How was your day?"></textarea>
+          <div class="char-count">0/100</div>
+          <div class="privacy-toggle"><label><input type="checkbox" id="is-public" checked> Public</label></div>
+          <button id="post-btn">Save for Today</button>
+        </div>
+      `;
+      const textarea = container.querySelector('#diary-text');
+      textarea.oninput = () => {
+        container.querySelector('.char-count').textContent = `${textarea.value.length}/100`;
+        renderSentiment(div.querySelector('#sentiment-preview'), analyzeSentiment(textarea.value));
+      };
+      container.querySelector('#post-btn').onclick = () => {
+        if (!textarea.value) return;
+        state.entries.unshift({
+          id: Date.now().toString(),
+          text: textarea.value,
+          user: state.user.nickname,
+          likes: 0,
+          timestamp: new Date().toISOString(),
+          dateString: new Date().toLocaleDateString(),
+          sentiment: analyzeSentiment(textarea.value),
+          isPublic: container.querySelector('#is-public').checked
+        });
+        navigate('home');
+      };
+    } else {
+      container.innerHTML = `
+        <h2 class="section-title">📰 Share News</h2>
+        <div class="auth-card">
+          <input type="text" id="news-url" placeholder="News URL (https://...)">
+          <textarea id="news-comment" placeholder="Your thoughts..."></textarea>
+          <button id="news-post-btn">Share & Discuss</button>
+        </div>
+      `;
+      container.querySelector('#news-post-btn').onclick = () => {
+        const url = container.querySelector('#news-url').value;
+        if (!url) return;
+        state.news.unshift({
+          id: Date.now().toString(),
+          url,
+          comment: container.querySelector('#news-comment').value,
+          user: state.user.nickname,
+          timestamp: new Date().toISOString(),
+          empathy: 0,
+          nonEmpathy: 0
+        });
+        navigate('home');
+      };
+    }
+  }
+
+  renderTabContent(div.querySelector('#tab-content'), 'diary');
   appContainer.appendChild(div);
 }
 
 function renderSentiment(container, scores) {
   container.innerHTML = `
     <div class="emotion-meter">
-      <div class="emotion-bar joy" style="width: ${scores.joy}%">Joy ${scores.joy}%</div>
-      <div class="emotion-bar sad" style="width: ${scores.sad}%">Sad ${scores.sad}%</div>
-      <div class="emotion-bar anger" style="width: ${scores.anger}%">Anger ${scores.anger}%</div>
-      <div class="emotion-bar calm" style="width: ${scores.calm}%">Calm ${scores.calm}%</div>
+      <div class="emotion-bar joy" style="width: ${scores.joy}%">Joy</div>
+      <div class="emotion-bar sad" style="width: ${scores.sad}%">Sad</div>
+      <div class="emotion-bar anger" style="width: ${scores.anger}%">Anger</div>
+      <div class="emotion-bar calm" style="width: ${scores.calm}%">Calm</div>
     </div>
   `;
 }
 
-// --- View: Chat ---
-function renderChat() {
-  const div = document.createElement('div');
-  div.innerHTML = `
-    <h2 class="section-title">💬 Mutual Connections</h2>
-    <div class="auth-card">
-      <p>Connect with others to unlock chat!</p>
-      <div id="chat-list">
-        <div class="empty-state">No mutual followers yet.</div>
-      </div>
-    </div>
-  `;
-  appContainer.appendChild(div);
+function renderChat() { /* logic here */ }
+
+function mockNews() {
+  return [{ id: 'n1', url: 'https://news.example.com/1', comment: 'Interesting news! 🌏', user: 'Admin', empathy: 10, nonEmpathy: 1, timestamp: new Date().toISOString() }];
 }
 
-// --- Mock Data ---
 function mockBest10() {
-  return Array(3).fill(null).map((_, i) => ({
-    id: `best-${i}`,
-    text: "This is a great day! I'm feeling awesome! 😊✨",
-    user: `User${i+1}`,
-    likes: 120 - i * 10,
-    sentiment: { joy: 80, calm: 20, sad: 0, anger: 0 }
-  }));
+  return [{ id: 'b1', text: 'Amazing day! ✨', user: 'User1', likes: 100, sentiment: { joy: 100, sad: 0, anger: 0, calm: 0 } }];
 }
 
 function mockFeed() {
-  return [
-    {
-      id: 'f1',
-      text: "Today was a bit tough but I'm resting now. 😴🍃",
-      user: "CalmDreamer",
-      likes: 5,
-      sentiment: { joy: 0, calm: 90, sad: 10, anger: 0 }
-    }
-  ];
+  return [{ id: 'f1', text: 'Hello world!', user: 'User2', likes: 5, sentiment: { joy: 50, sad: 0, anger: 0, calm: 50 } }];
 }
 
-// --- Init ---
-const savedUser = localStorage.getItem('diary_user');
-if (savedUser) {
-  state.user = JSON.parse(savedUser);
-  navigate('home');
-} else {
-  render();
-}
-
-// --- Web Component: Diary Card ---
+// --- Web Components ---
 class DiaryCard extends HTMLElement {
   connectedCallback() {
     const data = JSON.parse(this.getAttribute('data'));
-    const isLiked = state.user?.likedEntries?.includes(data.id);
-    const isFollowing = state.user?.following?.includes(data.user);
-
     this.innerHTML = `
       <div class="diary-card">
-        <div class="card-header">
-          <span class="card-user">@${data.user} ${data.user === state.user?.nickname ? '(You)' : ''}</span>
-          <div class="card-actions">
-            ${data.user !== state.user?.nickname ? `<button class="follow-btn ${isFollowing ? 'following' : ''}">${isFollowing ? 'Following' : 'Follow'}</button>` : ''}
-            <span class="card-date">${new Date().toLocaleDateString()}</span>
-          </div>
-        </div>
+        <div class="card-header"><span class="card-user">@${data.user}</span></div>
         <div class="card-content">${data.text}</div>
-        ${data.photoUrl ? `<img src="${data.photoUrl}" class="card-photo">` : ''}
-        ${data.voiceUrl ? `<audio controls src="${data.voiceUrl}" class="card-audio"></audio>` : ''}
-        <div class="card-footer">
-          <div class="emotion-preview">
-            ${Object.entries(data.sentiment).map(([k, v]) => v > 0 ? `<span class="emo-tag ${k}">${k} ${v}%</span>` : '').join('')}
-          </div>
-          <button class="like-btn ${isLiked ? 'liked' : ''}">❤️ ${data.likes}</button>
-        </div>
+        <div class="card-footer"><button class="like-btn">❤️ ${data.likes}</button></div>
       </div>
     `;
-    
-    this.querySelector('.like-btn').onclick = () => {
-      if (!state.user.likedEntries) state.user.likedEntries = [];
-      if (state.user.likedEntries.includes(data.id)) {
-        data.likes--;
-        state.user.likedEntries = state.user.likedEntries.filter(id => id !== data.id);
-      } else {
-        data.likes++;
-        state.user.likedEntries.push(data.id);
-      }
-      this.querySelector('.like-btn').innerHTML = `❤️ ${data.likes}`;
-      this.querySelector('.like-btn').classList.toggle('liked');
-    };
-
-    const followBtn = this.querySelector('.follow-btn');
-    if (followBtn) {
-      followBtn.onclick = () => {
-        if (!state.user.following) state.user.following = [];
-        if (state.user.following.includes(data.user)) {
-          state.user.following = state.user.following.filter(u => u !== data.user);
-          followBtn.innerText = 'Follow';
-          followBtn.classList.remove('following');
-        } else {
-          state.user.following.push(data.user);
-          followBtn.innerText = 'Following';
-          followBtn.classList.add('following');
-          alert(`You followed ${data.user}! If they follow you back, you can chat.`);
-        }
-      };
-    }
   }
 }
 customElements.define('diary-card', DiaryCard);
+
+class NewsCard extends HTMLElement {
+  connectedCallback() {
+    const data = JSON.parse(this.getAttribute('data'));
+    this.innerHTML = `
+      <div class="news-card">
+        <div class="card-header"><span class="card-user">@${data.user} Shared</span></div>
+        <a href="${data.url}" target="_blank" class="news-link">🔗 ${data.url}</a>
+        <div class="card-content">${data.comment}</div>
+        <div class="empathy-container">
+          <button class="emp-btn agree">👍 Empathy ${data.empathy}</button>
+          <button class="emp-btn disagree">👎 Non-Empathy ${data.nonEmpathy}</button>
+        </div>
+      </div>
+    `;
+    this.querySelector('.agree').onclick = () => { data.empathy++; this.renderButtons(this, data); };
+    this.querySelector('.disagree').onclick = () => { data.nonEmpathy++; this.renderButtons(this, data); };
+  }
+  renderButtons(el, data) {
+    el.querySelector('.agree').innerHTML = `👍 Empathy ${data.empathy}`;
+    el.querySelector('.disagree').innerHTML = `👎 Non-Empathy ${data.nonEmpathy}`;
+  }
+}
+customElements.define('news-card', NewsCard);
+
+// Init
+const savedUser = localStorage.getItem('diary_user');
+if (savedUser) { state.user = JSON.parse(savedUser); navigate('home'); } else { render(); }
