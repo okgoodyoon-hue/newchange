@@ -542,8 +542,119 @@ button:active {
   border: 2px solid #ff4b2b;
 }
 
+/* Newspaper Aesthetic */
+.newspaper-container {
+  background: #fdfcf8; /* Paper-like background */
+  padding: 2rem;
+  border: 1px solid #d3d3d3;
+  box-shadow: 10px 10px 0px #e0e0e0;
+  font-family: 'Georgia', serif;
+  color: #1a1a1a;
+}
+
+.newspaper-header {
+  text-align: center;
+  border-bottom: 4px double #1a1a1a;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+}
+
+.newspaper-title {
+  font-size: 3.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -2px;
+  margin: 0;
+}
+
+.newspaper-meta {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #1a1a1a;
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.news-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+}
+
+.cat-tag {
+  padding: 0.3rem 0.8rem;
+  background: #1a1a1a;
+  color: white;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+.cat-tag.active {
+  background: #ff4b2b;
+}
+
+/* News Article Card (Newspaper Style) */
+.article-card {
+  border-bottom: 1px solid #ccc;
+  padding: 1.5rem 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.article-card:last-child {
+  border-bottom: none;
+}
+
+.article-headline {
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+  text-decoration: none;
+  color: #1a1a1a;
+  display: block;
+}
+
+.article-headline:hover {
+  color: #ff4b2b;
+}
+
+.article-content {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #333;
+  column-count: 2; /* Newspaper column look */
+  column-gap: 1.5rem;
+}
+
+.article-footer {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #666;
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .article-content {
+    column-count: 1;
+  }
+  .newspaper-title {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+
   .best-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;

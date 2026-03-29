@@ -97,29 +97,29 @@ function renderAuth() {
   appContainer.appendChild(div);
 }
 
+// --- News Categories ---
+const newsCategories = [
+  { id: 'top', name: 'TOP NEWS', url: 'https://www.yonhapnewstv.co.kr/browse/feed/' },
+  { id: 'pol', name: 'POLITICS', url: 'https://www.yonhapnewstv.co.kr/category/politics/feed/' },
+  { id: 'eco', name: 'ECONOMY', url: 'https://www.yonhapnewstv.co.kr/category/economy/feed/' },
+  { id: 'soc', name: 'SOCIETY', url: 'https://www.yonhapnewstv.co.kr/category/society/feed/' },
+  { id: 'cul', name: 'LIFE/CULT', url: 'https://www.yonhapnewstv.co.kr/category/culture/feed/' },
+  { id: 'sci', name: 'IT/SCI', url: 'https://www.yonhapnewstv.co.kr/category/it_science/feed/' }
+];
+
+let selectedCategory = 'top';
+
 // --- News Fetching Logic ---
-async function fetchLiveNews() {
-  const RSS_URL = 'https://www.yonhapnewstv.co.kr/browse/feed/';
-  const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
+async function fetchLiveNews(catId = 'top') {
+  const cat = newsCategories.find(c => c.id === catId) || newsCategories[0];
+  const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(cat.url)}`;
   
   try {
     const response = await fetch(API_URL);
     const data = await response.json();
-    if (data.status === 'ok') {
-      return data.items.map(item => ({
-        id: item.guid,
-        url: item.link,
-        title: item.title,
-        comment: item.description.substring(0, 100) + '...',
-        user: 'LIVE NEWS',
-        timestamp: item.pubDate,
-        empathy: Math.floor(Math.random() * 50),
-        nonEmpathy: Math.floor(Math.random() * 5),
-        isLive: true
-      }));
-    }
+    return data.status === 'ok' ? data.items : [];
   } catch (e) {
-    console.error("Failed to fetch live news:", e);
+    console.error("Failed to fetch news:", e);
     return [];
   }
 }
@@ -128,20 +128,34 @@ async function fetchLiveNews() {
 async function renderHome() {
   const div = document.createElement('div');
   div.innerHTML = `
-    <div class="best-grid">
-      <div class="best-column">
-        <h2 class="section-title">📡 Live Breaking News</h2>
-        <div id="live-news-list">
-          <div class="loader-container"><div class="loader"></div></div>
+    <div class="newspaper-container">
+      <div class="newspaper-header">
+        <h1 class="newspaper-title">The Daily News</h1>
+        <div class="newspaper-meta">
+          <span>Edition No. ${Math.floor(Date.now()/1000000)}</span>
+          <span>${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <span>Seoul, South Korea</span>
         </div>
       </div>
-      <div class="best-column">
-        <h2 class="section-title">🏆 Best Diary</h2>
-        <div id="best-diary-list"></div>
+      
+      <div class="news-categories">
+        ${newsCategories.map(cat => `<span class="cat-tag ${selectedCategory === cat.id ? 'active' : ''}" data-id="${cat.id}">${cat.name}</span>`).join('')}
+      </div>
+
+      <div class="best-grid">
+        <div class="best-column">
+          <div id="newspaper-articles">
+            <div class="loader-container"><div class="loader"></div></div>
+          </div>
+        </div>
+        <div class="best-column" style="font-family: 'Inter', sans-serif;">
+          <h2 class="section-title">🏆 Best Diary</h2>
+          <div id="best-diary-list"></div>
+        </div>
       </div>
     </div>
 
-    <div class="main-tabs">
+    <div class="main-tabs" style="font-family: 'Inter', sans-serif;">
       <button class="main-tab-btn ${state.mainTab === 'diary' ? 'active' : ''}" data-tab="diary">My History & Feed</button>
       <button class="main-tab-btn ${state.mainTab === 'news' ? 'active' : ''}" data-tab="news">Discussion</button>
     </div>
@@ -150,21 +164,37 @@ async function renderHome() {
   `;
   appContainer.appendChild(div);
 
-  // Fetch and Render Live News
-  const liveNewsCont = div.querySelector('#live-news-list');
-  fetchLiveNews().then(newsItems => {
-    liveNewsCont.innerHTML = '';
-    const itemsToShow = newsItems.length ? newsItems.slice(0, 5) : mockNews();
-    itemsToShow.forEach(item => {
-      const card = document.createElement('news-card');
-      card.setAttribute('data', JSON.stringify(item));
-      liveNewsCont.appendChild(card);
+  // Category selection
+  div.querySelectorAll('.cat-tag').forEach(tag => {
+    tag.onclick = () => {
+      selectedCategory = tag.dataset.id;
+      render();
+    };
+  });
+
+  // Fetch and Render Newspaper Articles
+  const newsListCont = div.querySelector('#newspaper-articles');
+  fetchLiveNews(selectedCategory).then(articles => {
+    newsListCont.innerHTML = '';
+    const items = articles.length ? articles.slice(0, 6) : [];
+    items.forEach(item => {
+      const article = document.createElement('div');
+      article.className = 'article-card';
+      article.innerHTML = `
+        <a href="${item.link}" target="_blank" class="article-headline">${item.title}</a>
+        <div class="article-content">${item.description.replace(/<[^>]*>?/gm, '').substring(0, 250)}...</div>
+        <div class="article-footer">
+          <span>${new Date(item.pubDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <span>${item.author || 'Press'}</span>
+        </div>
+      `;
+      newsListCont.appendChild(article);
     });
   });
 
-  // Render Best Diary (Static top section)
-  const bestDiary = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 3);
+  // Render Best Diary
   const bestDiaryCont = div.querySelector('#best-diary-list');
+  const bestDiary = [...state.entries].filter(e => e.isPublic).sort((a, b) => b.likes - a.likes).slice(0, 3);
   (bestDiary.length ? bestDiary : mockBest10().slice(0, 2)).forEach(item => {
     const card = document.createElement('diary-card');
     card.setAttribute('data', JSON.stringify(item));
@@ -172,10 +202,7 @@ async function renderHome() {
   });
 
   div.querySelectorAll('.main-tab-btn').forEach(btn => {
-    btn.onclick = () => {
-      state.mainTab = btn.dataset.tab;
-      render();
-    };
+    btn.onclick = () => { state.mainTab = btn.dataset.tab; render(); };
   });
 
   renderMainContent(div.querySelector('#main-content'));
