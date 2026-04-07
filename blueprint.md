@@ -1,31 +1,31 @@
-# **Daily Hot Issue & Social Diary - Project Blueprint**
+# **Wanderlust Korea - Travel & Culture Portal**
 
 ## **개요**
-사용자들이 오늘 하루의 가장 뜨거운 이슈를 한눈에 파악하고, 이에 대한 짧은 의견(일기)을 공유하는 **실시간 뉴스 큐레이션 및 소셜 일기장**입니다. 주요 언론사의 속보를 실시간으로 통합하여 제공하며, 뉴스에 대한 공감과 토론을 장려합니다.
+대한민국의 구석구석 숨겨진 여행지와 실시간 문화 행사 정보를 제공하는 **국내 여행 특화 큐레이션 플랫폼**입니다. 최신 여행 뉴스와 지역별 축제 정보를 한눈에 파악하고, 자신의 여행 기록을 공유할 수 있습니다.
 
 ## **상세 기능 및 구현 현황**
 
-### **1. 실시간 핫이슈 뉴스 대시보드 (New!)**
-- **멀티 채널 RSS 통합:** 주요 방송사 및 일간지의 실시간 뉴스 피드 통합.
-- **지능형 뉴스 피드:** 최신순 정렬 및 유사 기사 그룹화를 통해 정보 과부하 방지.
-- **신문 레이아웃:** 고전적 신문 스타일의 Serif 서체와 격자형 배치를 통한 높은 가독성.
-- **실시간 업데이트:** 'LIVE' 배지와 함께 1분 단위로 새로운 소식 감지.
+### **1. 실시간 여행 뉴스 & 정보 (Top-Left)**
+- **국내 여행 특화 RSS:** 주요 언론사의 여행/문화 섹션 및 관광공사 소식 통합.
+- **트렌드 브리핑:** 최신 관광 트렌드와 여행 꿀팁 제공.
 
-### **2. 뉴스 기반 소셜 인터랙션**
-- **뉴스 토론방:** 기사 클릭 시 해당 이슈에 대한 사용자들의 실시간 의견 노출 및 참여.
-- **공감 투표:** '공감/비공감' 버튼을 통한 여론 확인.
-- **일기 작성:** 특정 뉴스를 인용하여 자신의 일기에 기록 가능.
+### **2. 지역별 축제 & 전시 가이드 (Top-Right)**
+- **실시간 행사 피드:** 전국 지자체 및 문화포털의 행사/전시 RSS 연동.
+- **월간 캘린더 모드:** 이번 달에 놓치지 말아야 할 주요 축제 하이라이트 노출.
 
-### **3. 지능형 서비스 및 미학적 디자인**
-- **디자인 컨셉:** 
-    - **News-First UI:** 메인 화면 중앙에 가장 중요한 이슈를 배치하고, 사이드바에 실시간 속보 노출.
-    - **Premium Texture:** 배경에 미세한 종이 질감(Noise Texture)을 적용하여 신문 느낌 극대화.
-    - **Visual Depth:** 카드형 뉴스 배치와 깊이 있는 그림자 효과(OKLCH 컬러 활용).
+### **3. 여행자들의 기록 (Bottom - Social Diary)**
+- **여행 일기:** 100자 내외의 짧은 여행 후기 및 감정 기록.
+- **공감 & 추천:** 가고 싶은 여행지에 대한 사용자들 간의 소통.
+
+### **4. 미학적 디자인**
+- **매거진 레이아웃:** 고해상도 이미지와 세련된 타이포그래피를 활용한 여행 잡지 스타일.
+- **Travel Palette:** 청량한 Sky Blue와 내추럴한 Sand Beige 컬러 조합.
+- **Interactive Map:** (향후 계획) 지역별 클릭 시 해당 지역 정보 필터링.
 
 ## **Current Implementation Plan**
-1.  **News Core:** Expand the RSS source list and improve the fetching logic.
-2.  **UI Redesign:** Optimize the main landing page for "Hot Issues" first.
-3.  **Deployment:** Automatically update the live site via GitHub Pages.
+1.  **Travel Data Core:** Connect to domestic travel and cultural event RSS feeds.
+2.  **Split View Layout:** Organize the dashboard into News (Left) and Events (Right).
+3.  **Visual Refinement:** Apply a travel-themed CSS skin.
 
 ---
 *Last Updated: April 7, 2026*
