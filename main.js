@@ -36,10 +36,13 @@ const latestNewsSources = [
   'https://news.sbs.co.kr/news/rss/news_top.xml',
   'https://news.kbs.co.kr/rss/news9.xml',
   'https://imnews.imbc.com/rss/news/news_00.xml',
-  'https://www.yonhapnewstv.co.kr/browse/feed/'
+  'https://www.yonhapnewstv.co.kr/browse/feed/',
+  'https://fs.jtbc.co.kr/RSS/newsflash.xml',
+  'https://www.chosun.com/arc/outboundfeeds/rss/category/national/?outputType=xml',
+  'https://rss.donga.com/total.xml'
 ];
 
-// --- 뉴스 가져오기 로직 (최신 속보 통합) ---
+// --- 뉴스 가져오기 로직 ---
 async function fetchLatestHeadlines() {
   const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3';
   try {
@@ -55,7 +58,6 @@ async function fetchLatestHeadlines() {
       .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
     
     if (allItems.length === 0) throw new Error('No news');
-    // 최신 뉴스 10개만 추출 (그룹화 포함)
     return groupSimilarNews(allItems).slice(0, 10);
   } catch (e) {
     console.warn("뉴스 로딩 실패, 샘플 사용:", e);
@@ -98,6 +100,9 @@ function extractSource(url) {
   if (url.includes('kbs.co.kr')) return 'KBS';
   if (url.includes('imbc.com')) return 'MBC';
   if (url.includes('yonhap')) return '연합뉴스';
+  if (url.includes('jtbc')) return 'JTBC';
+  if (url.includes('chosun')) return '조선일보';
+  if (url.includes('donga')) return '동아일보';
   return '언론사';
 }
 
@@ -164,7 +169,11 @@ async function renderHome() {
       <div class="newspaper-container">
         <div class="newspaper-header">
           <h1 class="newspaper-title">The Daily News</h1>
-          <div class="newspaper-meta"><span>REAL-TIME HEADLINES</span><span>${new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span><span>LIVE</span></div>
+          <div class="newspaper-meta">
+            <span>REAL-TIME HEADLINES</span>
+            <span>${new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <button id="refresh-news-btn" class="live-badge" style="cursor:pointer; border:none; outline:none; animation: pulse 2s infinite;">LIVE ↻ 업데이트</button>
+          </div>
         </div>
         <div id="newspaper-articles"><div class="loader-container"><div class="loader"></div></div></div>
       </div>
@@ -188,48 +197,46 @@ async function renderHome() {
   renderListInside(publicFeedCont, publicFeed.length ? publicFeed : mockFeed());
 
   const newsListCont = div.querySelector('#newspaper-articles');
-  fetchLatestHeadlines().then(articles => {
-    newsListCont.innerHTML = '';
-    
-    // 정확히 10개만 노출
-    const top10 = articles.slice(0, 10);
-
-    top10.forEach(item => {
-      const article = document.createElement('div');
-      article.className = 'article-card';
-      article.style.padding = '0.8rem 0';
-      article.style.position = 'relative';
-      
-      const source = extractSource(item.link);
-      const uniqueRelated = [...new Set(item.related.map(r => extractSource(r.link)))].filter(s => s !== source);
-      
-      article.innerHTML = `
-        <div class="headline-container" style="display:flex; flex-direction:column; gap:0.25rem;">
-          <a href="${item.link}" target="_blank" class="article-headline" rel="noopener noreferrer" style="font-size:1.15rem; border-left:4px solid #1a1a1a; padding-left:12px; line-height:1.3; cursor:pointer; display:block;">
-            ${item.title}
-          </a>
-          <div class="related-info" style="font-size:0.7rem; margin-left:12px; color:#666; display:flex; align-items:center; gap:0.5rem;">
-            <span style="color:#ff4b2b; font-weight:bold;">${source}</span>
-            ${uniqueRelated.length > 0 ? ` 외 ${uniqueRelated.join(', ')}` : ''}
-            <span style="margin-left:auto;">${new Date(item.pubDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-            <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}" style="border:none; background:none; color:var(--primary); cursor:pointer; font-weight:bold;">💬 토론</button>
+  const updateNews = () => {
+    newsListCont.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
+    fetchLatestHeadlines().then(articles => {
+      newsListCont.innerHTML = '';
+      articles.forEach(item => {
+        const article = document.createElement('div');
+        article.className = 'article-card';
+        article.style.padding = '0.8rem 0';
+        const source = extractSource(item.link);
+        const uniqueRelated = [...new Set(item.related.map(r => extractSource(r.link)))].filter(s => s !== source);
+        article.innerHTML = `
+          <div class="headline-container" style="display:flex; flex-direction:column; gap:0.25rem;">
+            <a href="${item.link}" target="_blank" class="article-headline" rel="noopener noreferrer" style="font-size:1.1rem; border-left:4px solid #1a1a1a; padding-left:12px; line-height:1.3; cursor:pointer; display:block;">
+              ${item.title}
+            </a>
+            <div class="related-info" style="font-size:0.7rem; margin-left:12px; color:#666; display:flex; align-items:center; gap:0.5rem;">
+              <span style="color:#ff4b2b; font-weight:bold;">${source}</span>
+              ${uniqueRelated.length > 0 ? ` 외 ${uniqueRelated.join(', ')}` : ''}
+              <span style="margin-left:auto;">${new Date(item.pubDate).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+              <button class="share-to-disc-btn" data-url="${item.link}" data-title="${item.title}" style="border:none; background:none; color:var(--primary); cursor:pointer; font-weight:bold;">💬 토론</button>
+            </div>
           </div>
-        </div>
-      `;
-      
-      article.querySelector('.share-to-disc-btn').onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const { url, title } = e.target.dataset;
-        const comment = prompt(`"${title}"\n의견을 남겨주세요:`);
-        if (comment !== null) {
-          state.news.unshift({ id: Date.now().toString(), url, title, comment: comment || "공감!", user: state.user.nickname, timestamp: new Date().toISOString(), empathy: 0, nonEmpathy: 0 });
-          render();
-        }
-      };
-      newsListCont.appendChild(article);
+        `;
+        article.querySelector('.share-to-disc-btn').onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const { url, title } = e.target.dataset;
+          const comment = prompt(`"${title}"\n의견을 남겨주세요:`);
+          if (comment !== null) {
+            state.news.unshift({ id: Date.now().toString(), url, title, comment: comment || "공감!", user: state.user.nickname, timestamp: new Date().toISOString(), empathy: 0, nonEmpathy: 0 });
+            render();
+          }
+        };
+        newsListCont.appendChild(article);
+      });
     });
-  });
+  };
+
+  updateNews();
+  div.querySelector('#refresh-news-btn').onclick = updateNews;
 
   const newsDiscCont = div.querySelector('#news-list');
   (state.news.length ? state.news : mockNews()).forEach(item => {
