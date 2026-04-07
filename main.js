@@ -7,28 +7,46 @@ const state = {
   localEvents: []
 };
 
-// --- 여행 및 축제 RSS 소스 ---
+// --- 강화된 데이터 소스 (뉴스, 블로그, 축제) ---
 const travelNewsSources = [
-  'https://news.sbs.co.kr/news/rss/news_life.xml', // 생활/문화 (여행 포함)
-  'https://www.khan.co.kr/rss/rssdata/culture.xml', // 경향 문화
-  'https://rss.donga.com/life.xml' // 동아 라이프
+  'https://www.khan.co.kr/rss/rssdata/culture.xml', // 경향 문화/여행
+  'https://rss.donga.com/life.xml', // 동아 생활/여행
+  'https://news.sbs.co.kr/news/rss/news_life.xml' // SBS 생활/문화
 ];
 
-const eventSources = [
+const festivalSources = [
   'https://www.culture.go.kr/rss/culturePotalNewC01.do', // 문화포털 교육/전시
-  'https://www.culture.go.kr/rss/culturePotalNewC02.do'  // 문화포털 공연/축제
+  'https://www.culture.go.kr/rss/culturePotalNewC02.do', // 문화포털 축제/행사
+  'https://rss.blog.naver.com/kto90.xml' // 한국관광공사 네이버 공식 블로그 (핵심 정보원)
 ];
 
-async function fetchRSS(urls) {
+// 유튜브 채널 RSS (대한민국 구석구석 공식 채널)
+const youtubeSource = 'https://www.youtube.com/feeds/videos.xml?channel_id=UCvX6HhL_wZt_f4M68v5D_hQ';
+
+async function fetchAllData() {
   const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3';
-  const promises = urls.map(url => 
+  
+  const fetchRSS = (urls) => urls.map(url => 
     fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=${API_KEY}&t=${Date.now()}`)
       .then(res => res.json())
       .then(data => data.status === 'ok' ? data.items : [])
       .catch(() => [])
   );
-  const results = await Promise.all(promises);
-  return results.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+  const [newsResults, eventResults, ytResults] = await Promise.all([
+    Promise.all(fetchRSS(travelNewsSources)),
+    Promise.all(fetchRSS(festivalSources)),
+    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(youtubeSource)}&api_key=${API_KEY}`)
+      .then(res => res.json())
+      .then(data => data.status === 'ok' ? data.items : [])
+      .catch(() => [])
+  ]);
+
+  return {
+    news: newsResults.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)),
+    events: eventResults.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)),
+    youtube: ytResults
+  };
 }
 
 // --- 공통 유틸 ---
@@ -59,11 +77,11 @@ function renderAuth() {
   div.className = 'view-auth';
   div.innerHTML = `
     <div class="auth-card">
-      <div class="auth-hero">🏔️</div>
+      <div class="auth-hero">✈️</div>
       <h1>Wanderlust Korea</h1>
-      <p>대한민국 구석구석, 당신의 여행을 계획하세요.</p>
+      <p>여행 뉴스, 축제, 영상을 한곳에서 확인하세요.</p>
       <input type="text" id="nickname" placeholder="여행자 닉네임" maxlength="10">
-      <button id="start-btn">여행 시작하기</button>
+      <button id="start-btn">로그인</button>
     </div>
   `;
   div.querySelector('#start-btn').onclick = () => {
@@ -89,84 +107,80 @@ async function renderHome() {
     </header>
 
     <main class="dashboard-grid">
-      <!-- 상단 2단 레이아웃 -->
       <section class="top-row">
-        <!-- 1. 좌측 상단: 국내 여행 뉴스 -->
+        <!-- 1. 좌측 상단: 최신 여행 뉴스 -->
         <div class="panel news-panel">
           <div class="panel-header">
-            <h3>📰 실시간 여행 트렌드</h3>
-            <span class="live-tag">LIVE</span>
+            <h3>📰 실시간 여행 뉴스</h3>
+            <span class="live-tag">UPDATED</span>
           </div>
           <div id="travel-news-list" class="scroll-list">
             <div class="loader-container"><div class="loader"></div></div>
           </div>
         </div>
 
-        <!-- 2. 우측 상단: 지역 축제 및 행사 -->
+        <!-- 2. 우측 상단: 축제, 블로그, 유튜브 통합 피드 -->
         <div class="panel event-panel">
           <div class="panel-header">
-            <h3>🎨 이달의 축제 & 전시</h3>
-            <button id="refresh-events" class="btn-refresh">↻ 업데이트</button>
+            <h3>🎨 축제 & 인기 콘텐츠</h3>
+            <button id="refresh-data" class="btn-refresh">↻ 최신화</button>
           </div>
-          <div id="event-list" class="scroll-list">
+          <div id="event-feed-list" class="scroll-list">
             <div class="loader-container"><div class="loader"></div></div>
           </div>
         </div>
       </section>
 
-      <!-- 하단: 여행 기록 (소셜 다이어리) -->
       <section class="bottom-row">
         <div class="panel diary-panel">
           <div class="panel-header">
             <h3>✍️ 오늘의 여행 일기</h3>
-            <button id="add-diary-btn" class="btn-action">+ 일기 쓰기</button>
+            <button id="add-diary-btn" class="btn-action">+ 일기 작성</button>
           </div>
-          <div class="diary-container">
-            <div id="my-diary-list" class="diary-grid"></div>
-          </div>
+          <div id="my-diary-list" class="diary-grid"></div>
         </div>
       </section>
     </main>
   `;
   appContainer.appendChild(div);
 
-  // 데이터 로딩 로직
-  const updateData = async () => {
+  const updateUI = async () => {
     const newsCont = div.querySelector('#travel-news-list');
-    const eventCont = div.querySelector('#event-list');
+    const feedCont = div.querySelector('#event-feed-list');
+    
+    const data = await fetchAllData();
 
-    // 여행 뉴스 업데이트
-    const news = await fetchRSS(travelNewsSources);
-    newsCont.innerHTML = news.slice(0, 8).map(n => `
+    // 1. 뉴스 렌더링
+    newsCont.innerHTML = data.news.slice(0, 10).map(n => `
       <div class="news-item">
-        <div class="news-meta">${new Date(n.pubDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        <div class="news-meta">${timeAgo(n.pubDate)}</div>
         <a href="${n.link}" target="_blank" class="news-link">${n.title}</a>
+        <span class="tag-news">뉴스</span>
       </div>
-    `).join('') || '<p class="empty">최신 뉴스가 없습니다.</p>';
+    `).join('') || '<p class="empty">최신 여행 뉴스를 불러올 수 없습니다.</p>';
 
-    // 행사/축제 업데이트
-    const events = await fetchRSS(eventSources);
-    eventCont.innerHTML = events.slice(0, 8).map(e => `
-      <div class="event-card">
-        <div class="event-category">${e.categories?.[0] || '문화/예술'}</div>
-        <a href="${e.link}" target="_blank" class="event-title">${e.title}</a>
-        <div class="event-date">📅 ${new Date(e.pubDate).toLocaleDateString()}</div>
+    // 2. 축제/블로그/유튜브 통합 피드 렌더링
+    const combinedFeed = [
+      ...data.youtube.map(v => ({ ...v, type: '유튜브', icon: '📽️' })),
+      ...data.events.map(e => ({ ...e, type: e.link.includes('blog.naver') ? '블로그' : '행사', icon: e.link.includes('blog.naver') ? '✍️' : '🎡' }))
+    ].sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+    feedCont.innerHTML = combinedFeed.slice(0, 15).map(item => `
+      <div class="event-card type-${item.type === '유튜브' ? 'yt' : 'blog'}">
+        <div class="item-badge">${item.icon} ${item.type}</div>
+        <a href="${item.link}" target="_blank" class="event-title">${item.title}</a>
+        <div class="event-meta">
+          <span>📅 ${new Date(item.pubDate).toLocaleDateString()}</span>
+          <span class="source">${item.author || '추천'}</span>
+        </div>
       </div>
-    `).join('') || '<p class="empty">준비된 행사가 없습니다.</p>';
+    `).join('') || '<p class="empty">콘텐츠를 불러오는 중입니다...</p>';
   };
 
-  updateData();
-  div.querySelector('#refresh-events').onclick = updateData;
+  updateUI();
+  div.querySelector('#refresh-data').onclick = updateUI;
 
-  // 일기 쓰기 기능
-  div.querySelector('#add-diary-btn').onclick = () => {
-    const text = prompt('오늘의 여행 소감이나 가고 싶은 곳을 적어주세요 (100자):');
-    if (text) {
-      state.diaries.unshift({ id: Date.now(), text, timestamp: new Date(), user: state.user.nickname });
-      renderDiaries();
-    }
-  };
-
+  // 일기 관리
   const renderDiaries = () => {
     const cont = div.querySelector('#my-diary-list');
     cont.innerHTML = state.diaries.map(d => `
@@ -175,7 +189,15 @@ async function renderHome() {
         <div class="diary-text">${d.text}</div>
         <div class="diary-time">${timeAgo(d.timestamp)}</div>
       </div>
-    `).join('') || '<div class="empty-state">첫 여행 일기를 작성해 보세요! 🌲</div>';
+    `).join('') || '<div class="empty-state">당신의 첫 번째 여행 기록을 남겨주세요! 🌊</div>';
+  };
+
+  div.querySelector('#add-diary-btn').onclick = () => {
+    const text = prompt('여행에 대한 짧은 생각을 남겨주세요:');
+    if (text) {
+      state.diaries.unshift({ id: Date.now(), text, timestamp: new Date(), user: state.user.nickname });
+      renderDiaries();
+    }
   };
   renderDiaries();
 }
