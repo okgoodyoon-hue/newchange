@@ -7,7 +7,8 @@
 
 ### **1. 실시간 여행 뉴스 & 정보 (Top-Left)**
 - **국내 여행 특화 RSS:** 주요 언론사의 여행/문화 섹션 및 관광공사 소식 통합.
-- **트렌드 브리핑:** 최신 관광 트렌드와 여행 꿀팁 제공.
+- **최신 뉴스 수동 업데이트 (2026-04-09):** RSS 연결 문제 발생 시에도 최신 정보를 제공할 수 있도록 큐레이션된 뉴스 데이터 탑재.
+- **트렌드 브리핑:** 제주 기상 정보, 서울 벚꽃 트렌드, 경주 봄꽃 소식 등 실시간 이슈 반영.
 
 ### **2. 지역별 축제 & 전시 가이드 (Top-Right)**
 - **멀티 미디어 피드:** 공공 데이터 RSS 외에도 여행 전문 뉴스, 네이버 공식 블로그, 유튜브 최신 영상을 통합.
@@ -24,9 +25,9 @@
 - **Interactive Map:** (향후 계획) 지역별 클릭 시 해당 지역 정보 필터링.
 
 ## **Current Implementation Plan**
-1.  **Travel Data Core:** Connect to domestic travel and cultural event RSS feeds.
-2.  **Split View Layout:** Organize the dashboard into News (Left) and Events (Right).
-3.  **Visual Refinement:** Apply a travel-themed CSS skin.
+1.  **News Data Update:** 2026년 4월 9일자 최신 국내 여행 뉴스 6건을 시스템에 통합 (제주 결항, 서울 벚꽃 1위, 경주 벚꽃 절정 등).
+2.  **Fallback Mechanism:** RSS API 호출 실패 시 큐레이션된 최신 뉴스를 우선 표시하도록 `main.js` 로직 강화.
+3.  **UI Feedback:** 뉴스 섹션에 "실시간 큐레이션" 배지 추가하여 정보의 신뢰도 강조.
 
 ---
-*Last Updated: April 7, 2026*
+*Last Updated: April 9, 2026*
