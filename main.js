@@ -20,43 +20,49 @@ const festivalSources = [
   'https://rss.blog.naver.com/kto90.xml' // 한국관광공사 네이버 공식 블로그
 ];
 
-// 2026-04-09 큐레이션된 최신 여행 뉴스 (실시간 연결 실패 시 대비)
+// 2026-04-09 고품질 큐레이션 뉴스 (AI 검색 결과 반영)
 const fallbackNews = [
   {
-    title: "[속보] 제주 기상 악화로 항공기·여객선 대거 결항... 운항 정보 확인 필수",
-    link: "https://www.google.com/search?q=제주+항공기+결항+2026",
-    pubDate: "2026-04-09 09:00:00",
-    author: "실시간 기상보도"
+    title: "서울, 글로벌 벚꽃 여행지 예약 1위 등극... 군산·진주·청주 '핫플' 부상",
+    link: "https://www.google.com/search?q=서울+벚꽃+여행지+1위+트립닷컴",
+    pubDate: "2026-04-09 10:00:00",
+    author: "트렌드",
+    category: "트렌드"
   },
   {
-    title: "서울, 올해 봄 글로벌 벚꽃 여행지 예약 1위 기록 (전년 대비 83% 증가)",
-    link: "https://www.google.com/search?q=서울+벚꽃+여행지+1위",
-    pubDate: "2026-04-09 10:30:00",
-    author: "트립닷컴 트렌드"
+    title: "벚꽃 엔딩? 경주 암곡 '벚꽃 터널' 오늘부터 절정... 12일까지 축제",
+    link: "https://www.google.com/search?q=경주+암곡+벚꽃+축제+2026",
+    pubDate: "2026-04-09 11:30:00",
+    author: "현장추천",
+    category: "축제"
   },
   {
-    title: "경주 암곡 '벚꽃 터널' 오늘 절정... 12일까지 벚꽃축제 개최",
-    link: "https://www.google.com/search?q=경주+암곡+벚꽃+축제",
-    pubDate: "2026-04-09 11:00:00",
-    author: "지역 뉴스"
+    title: "MZ세대 공략하는 '경험형 웰니스'... 온천 스파트립·도시형 러닝 투어 인기",
+    link: "https://www.google.com/search?q=경험형+여행+웰니스+스파트립",
+    pubDate: "2026-04-09 09:15:00",
+    author: "라이프스타일",
+    category: "웰니스"
   },
   {
-    title: "인천-제주 직항 노선 10년 만에 재개... 수도권 서부 접근성 크게 개선",
-    link: "https://www.google.com/search?q=인천+제주+직항+재개",
-    pubDate: "2026-04-09 08:00:00",
-    author: "항공 뉴스"
+    title: "청산도 슬로걷기 축제 개최... 노란 유채꽃과 푸른 바다의 조화",
+    link: "https://www.google.com/search?q=청산도+슬로걷기+축제+2026",
+    pubDate: "2026-04-08 14:00:00",
+    author: "섬여행",
+    category: "축제"
   },
   {
-    title: "울진군, '2026 디지털 관광주민증' 신규 지역 선정... 6월부터 할인 혜택",
-    link: "https://www.google.com/search?q=울진+디지털+관광주민증",
-    pubDate: "2026-04-09 07:30:00",
-    author: "한국관광공사"
+    title: "부산, 글로벌 크루즈 허브 도약... 프랑스 럭셔리 크루즈 12일 입항",
+    link: "https://www.google.com/search?q=부산+크루즈+관광+활성화",
+    pubDate: "2026-04-09 08:30:00",
+    author: "지역관광",
+    category: "교통"
   },
   {
-    title: "해외보다 국내로! '숙박세일 페스타' 숙박 할인권 최대 7만원 지급",
-    link: "https://www.google.com/search?q=숙박세일+페스타+2026",
-    pubDate: "2026-04-08 15:00:00",
-    author: "관광 진흥 정책"
+    title: "[날씨] 제주 기상 악화로 항공·여객선 결항 유의... 주말 영남권 꽃구경 최적",
+    link: "https://www.google.com/search?q=제주+기상+악화+결항+정보",
+    pubDate: "2026-04-09 07:00:00",
+    author: "실시간날씨",
+    category: "정보"
   }
 ];
 
@@ -164,7 +170,7 @@ async function renderHome() {
         <div class="panel news-panel">
           <div class="panel-header">
             <h3>📰 실시간 여행 뉴스</h3>
-            <span class="live-tag">UPDATED</span>
+            <button id="refresh-news" class="btn-refresh">↻ 최신화</button>
           </div>
           <div id="travel-news-list" class="scroll-list">
             <div class="loader-container"><div class="loader"></div></div>
@@ -175,7 +181,7 @@ async function renderHome() {
         <div class="panel event-panel">
           <div class="panel-header">
             <h3>🎨 축제 & 인기 콘텐츠</h3>
-            <button id="refresh-data" class="btn-refresh">↻ 최신화</button>
+            <button id="refresh-events" class="btn-refresh">↻ 최신화</button>
           </div>
           <div id="event-feed-list" class="scroll-list">
             <div class="loader-container"><div class="loader"></div></div>
@@ -196,24 +202,25 @@ async function renderHome() {
   `;
   appContainer.appendChild(div);
 
-  const updateUI = async () => {
+  const updateNews = async () => {
     const newsCont = div.querySelector('#travel-news-list');
-    const feedCont = div.querySelector('#event-feed-list');
-    
+    newsCont.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
     const data = await fetchAllData();
-
-    // 1. 뉴스 렌더링
     newsCont.innerHTML = data.news.slice(0, 10).map(n => `
       <div class="news-item">
         <div class="news-meta">
           ${timeAgo(n.pubDate)} • ${n.author || '뉴스'}
-          ${!n.guid ? '<span class="tag-curation">큐레이션</span>' : ''}
+          ${!n.guid ? `<span class="tag-curation">${n.category || '큐레이션'}</span>` : '<span class="tag-news">실시간</span>'}
         </div>
         <a href="${n.link}" target="_blank" class="news-link">${n.title}</a>
       </div>
     `).join('') || '<p class="empty">최신 여행 뉴스를 불러올 수 없습니다.</p>';
+  };
 
-    // 2. 축제/블로그/유튜브 통합 피드 렌더링
+  const updateEvents = async () => {
+    const feedCont = div.querySelector('#event-feed-list');
+    feedCont.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
+    const data = await fetchAllData();
     const combinedFeed = [
       ...data.youtube.map(v => ({ ...v, type: '유튜브', icon: '📽️' })),
       ...data.events.map(e => ({ ...e, type: e.link.includes('blog.naver') ? '블로그' : '행사', icon: e.link.includes('blog.naver') ? '✍️' : '🎡' }))
@@ -231,8 +238,11 @@ async function renderHome() {
     `).join('') || '<p class="empty">콘텐츠를 불러오는 중입니다...</p>';
   };
 
-  updateUI();
-  div.querySelector('#refresh-data').onclick = updateUI;
+  updateNews();
+  updateEvents();
+  
+  div.querySelector('#refresh-news').onclick = updateNews;
+  div.querySelector('#refresh-events').onclick = updateEvents;
 
   // 일기 관리
   const renderDiaries = () => {
