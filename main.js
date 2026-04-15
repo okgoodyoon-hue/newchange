@@ -55,16 +55,15 @@ const festivalData = {
   ]
 };
 
-// --- 확장된 국내 언론사 뉴스 API 소스 ---
+// --- 확장된 국내 언론사 뉴스 API 소스 (여행/문화 특화) ---
 const travelNewsSources = [
-  'https://www.yonhapnewstv.co.kr/category/news/culture/feed/', // 연합뉴스 문화
-  'https://news.kbs.co.kr/rss/news99.xml', // KBS 뉴스
-  'https://www.khan.co.kr/rss/rssdata/culture.xml', // 경향 문화/여행
-  'https://rss.donga.com/life.xml', // 동아 생활/여행
   'https://www.chosun.com/arc/outboundfeeds/rss/category/culture-life/travel/?outputType=xml', // 조선일보 여행
-  'https://rss.joins.com/joins_life_list.xml', // 중앙일보 생활
+  'https://rss.donga.com/life.xml', // 동아 생활/여행
+  'https://www.khan.co.kr/rss/rssdata/culture.xml', // 경향 문화/여행
   'https://www.hani.co.kr/rss/culture/', // 한겨레 문화
-  'https://news.sbs.co.kr/news/rss/news_life.xml' // SBS 생활/문화
+  'https://news.sbs.co.kr/news/rss/news_life.xml', // SBS 생활/문화
+  'https://www.yonhapnewstv.co.kr/category/news/culture/feed/', // 연합뉴스 문화
+  'https://news.kbs.co.kr/rss/news_05.xml' // KBS 문화/생활
 ];
 
 const festivalSources = [
@@ -75,22 +74,22 @@ const festivalSources = [
 
 // 고품질 큐레이션 뉴스 (백업 데이터)
 const fallbackNews = [
-  { title: "서울, 글로벌 벚꽃 여행지 예약 1위 등극", link: "https://www.google.com/search?q=서울+벚꽃+여행지+1위", pubDate: new Date(), author: "연합뉴스", category: "트렌드" },
-  { title: "경주 암곡 '벚꽃 터널' 오늘부터 절정", link: "https://www.google.com/search?q=경주+암곡+벚꽃+절정", pubDate: new Date(), author: "지역뉴스", category: "축제" },
-  { title: "청산도 슬로걷기 축제 개최... 유채꽃 만발", link: "https://www.google.com/search?q=청산도+슬로걷기+축제", pubDate: new Date(), author: "섬여행", category: "축제" }
+  { title: "[단독] 2026 한국인이 가장 가고 싶은 여행지 1위 '제주'", link: "https://www.google.com/search?q=한국+여행+트렌드", pubDate: new Date(), author: "트래블타임즈", category: "트렌드" },
+  { title: "K-컬처 랜드마크 100선 발표... 외국인 관광객 유치 박차", link: "https://www.google.com/search?q=K-컬처+랜드마크+100선", pubDate: new Date(), author: "관광공사", category: "관광" },
+  { title: "봄맞이 전국 기차여행 패키지 출시... '매진 행렬'", link: "https://www.google.com/search?q=기차여행+패키지", pubDate: new Date(), author: "여행신문", category: "특가" }
 ];
 
 const youtubeSource = 'https://www.youtube.com/feeds/videos.xml?channel_id=UCvX6HhL_wZt_f4M68v5D_hQ';
 
 async function fetchAllData() {
+  // RSS2JSON API Key (공용 키 사용 시 트래픽 초과 가능성 대비 백업 로직 포함)
   const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3';
   
   const fetchRSS = (urls) => urls.map(url => 
-    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=${API_KEY}&t=${Date.now()}`)
+    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=${API_KEY}&t=${Date.now()}&count=20`)
       .then(res => res.json())
       .then(data => {
         if (data.status === 'ok') {
-          // 언론사 이름을 feed title에서 추출하거나 URL 기반으로 매칭
           const sourceName = data.feed.title.split(' - ')[0] || '언론사';
           return data.items.map(item => ({ ...item, author: sourceName }));
         }
@@ -111,16 +110,18 @@ async function fetchAllData() {
 
     let allNews = newsResults.flat();
     
-    // "좋은 기사" 필터링 (여행, 축제, 추천, 국내 등 키워드 포함 기사 우선)
-    const keywords = ['여행', '관광', '추천', '축제', '명소', '국내', '가볼만한', '나들이'];
-    let filteredNews = allNews.filter(n => keywords.some(k => n.title.includes(k)));
+    // --- 엄격한 여행 뉴스 필터링 ---
+    const travelKeywords = ['여행', '관광', '축제', '투어', '명소', '나들이', '항공', '숙박', '호텔', '캠핑', '벚꽃', '트레킹', '지역', '패키지'];
+    let filteredNews = allNews.filter(n => 
+      travelKeywords.some(k => n.title.includes(k) || n.description?.includes(k))
+    );
     
-    // 필터링된 기사가 적으면 최신순으로 보충
-    if (filteredNews.length < 5) {
-      filteredNews = allNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-    } else {
-      filteredNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-    }
+    // 중복 제거 (제목 기준)
+    filteredNews = Array.from(new Set(filteredNews.map(a => a.title)))
+      .map(title => filteredNews.find(a => a.title === title));
+
+    // 최신순 정렬
+    filteredNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
     if (filteredNews.length === 0) filteredNews = fallbackNews;
 
@@ -291,10 +292,10 @@ async function renderHome() {
       <section class="bottom-row">
         <div class="panel diary-panel">
           <div class="panel-header">
-            <h3>✍️ 오늘의 여행 일기</h3>
-            <button id="add-diary-btn" class="btn-action">+ 일기 작성</button>
+            <h3>🌟 여행자 추천 공간</h3>
+            <button id="add-recommend-btn" class="btn-action">+ 추천 명소 공유</button>
           </div>
-          <div id="my-diary-list" class="diary-grid"></div>
+          <div id="recommendation-list" class="diary-grid"></div>
         </div>
       </section>
     </main>
@@ -321,25 +322,36 @@ async function renderHome() {
   
   div.querySelector('#refresh-news').onclick = updateNews;
 
-  const renderDiaries = () => {
-    const cont = div.querySelector('#my-diary-list');
+  const renderRecommendations = () => {
+    const cont = div.querySelector('#recommendation-list');
     cont.innerHTML = state.diaries.map(d => `
-      <div class="diary-card">
-        <div class="diary-user">@${d.user}</div>
+      <div class="diary-card recommend-card">
+        <div class="recommend-header">
+          <span class="recommend-loc">📍 ${d.location || '전국'}</span>
+          <span class="diary-user">@${d.user}</span>
+        </div>
         <div class="diary-text">${d.text}</div>
         <div class="diary-time">${timeAgo(d.timestamp)}</div>
       </div>
-    `).join('') || '<div class="empty-state">당신의 첫 번째 여행 기록을 남겨주세요! 🌊</div>';
+    `).join('') || '<div class="empty-state">당신이 알고 있는 최고의 여행지를 추천해 주세요! ✨</div>';
   };
 
-  div.querySelector('#add-diary-btn').onclick = () => {
-    const text = prompt('여행에 대한 짧은 생각을 남겨주세요:');
+  div.querySelector('#add-recommend-btn').onclick = () => {
+    const location = prompt('추천하고 싶은 지역이나 장소를 입력해 주세요 (예: 제주도, 가로수길):');
+    if (!location) return;
+    const text = prompt('이 장소를 추천하는 이유나 팁을 남겨주세요:');
     if (text) {
-      state.diaries.unshift({ id: Date.now(), text, timestamp: new Date(), user: state.user.nickname });
-      renderDiaries();
+      state.diaries.unshift({ 
+        id: Date.now(), 
+        location,
+        text, 
+        timestamp: new Date(), 
+        user: state.user.nickname 
+      });
+      renderRecommendations();
     }
   };
-  renderDiaries();
+  renderRecommendations();
 }
 
 render();

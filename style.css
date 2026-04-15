@@ -202,11 +202,25 @@ body {
 .festival-info h4 { color: var(--primary); margin-bottom: 0.5rem; }
 .festival-info p { font-size: 0.9rem; margin-bottom: 0.3rem; }
 
-/* Diary */
+/* Diary / Recommendation */
 .diary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-.diary-card { background: var(--light); padding: 1.5rem; border-radius: 16px; box-shadow: var(--shadow); }
-.diary-user { font-weight: bold; color: var(--primary); margin-bottom: 0.5rem; }
-.diary-time { font-size: 0.7rem; color: #aaa; text-align: right; margin-top: 1rem; }
+.diary-card { background: var(--light); padding: 1.5rem; border-radius: 16px; box-shadow: var(--shadow); position: relative; }
+
+.recommend-card { border-top: 4px solid var(--primary); background: var(--white); }
+.recommend-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.recommend-loc { 
+  background: var(--primary); 
+  color: white; 
+  padding: 4px 10px; 
+  border-radius: 20px; 
+  font-size: 0.75rem; 
+  font-weight: bold; 
+}
+.diary-user { font-weight: bold; color: var(--dark); font-size: 0.85rem; }
+.diary-text { font-size: 0.95rem; color: #444; line-height: 1.5; margin-bottom: 1rem; }
+.diary-time { font-size: 0.7rem; color: #aaa; text-align: right; }
+
+.empty-state { grid-column: 1 / -1; text-align: center; padding: 3rem; color: #aaa; font-style: italic; }
 
 /* Loader */
 .loader-container { display: flex; justify-content: center; align-items: center; height: 100%; }
