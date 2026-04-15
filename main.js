@@ -72,17 +72,20 @@ const festivalSources = [
   'https://rss.blog.naver.com/kto90.xml' // 한국관광공사 네이버 공식 블로그
 ];
 
-// 고품질 큐레이션 뉴스 (백업 데이터)
-const fallbackNews = [
-  { title: "[단독] 2026 한국인이 가장 가고 싶은 여행지 1위 '제주'", link: "https://www.google.com/search?q=한국+여행+트렌드", pubDate: new Date(), author: "트래블타임즈", category: "트렌드" },
-  { title: "K-컬처 랜드마크 100선 발표... 외국인 관광객 유치 박차", link: "https://www.google.com/search?q=K-컬처+랜드마크+100선", pubDate: new Date(), author: "관광공사", category: "관광" },
-  { title: "봄맞이 전국 기차여행 패키지 출시... '매진 행렬'", link: "https://www.google.com/search?q=기차여행+패키지", pubDate: new Date(), author: "여행신문", category: "특가" }
+// 고품질 유튜브 여행 소스
+const youtubeChannels = [
+  { name: '대한민국구석구석', id: 'UCvX6HhL_wZt_f4M68v5D_hQ' },
+  { name: 'EBS 여행기', id: 'UC29-6K_TscO96A6UofC_X_w' },
+  { name: 'KBS 여행걸리버', id: 'UC_0UqN-P5G9_Z8qP-k0wXjw' }
 ];
 
-const youtubeSource = 'https://www.youtube.com/feeds/videos.xml?channel_id=UCvX6HhL_wZt_f4M68v5D_hQ';
+// 유튜브 백업 데이터
+const fallbackYoutube = [
+  { title: "2026년 꼭 가봐야 할 국내 여행지 TOP 10", link: "https://www.youtube.com", pubDate: new Date(), author: "여행가이드", thumbnail: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=400&q=80" },
+  { title: "현지인들만 아는 제주도 숨은 명소", link: "https://www.youtube.com", pubDate: new Date(), author: "제주살이", thumbnail: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=400&q=80" }
+];
 
 async function fetchAllData() {
-  // RSS2JSON API Key (공용 키 사용 시 트래픽 초과 가능성 대비 백업 로직 포함)
   const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3';
   
   const fetchRSS = (urls) => urls.map(url => 
@@ -98,40 +101,48 @@ async function fetchAllData() {
       .catch(() => [])
   );
 
+  const fetchYoutubeRSS = (channels) => channels.map(ch => 
+    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.youtube.com/feeds/videos.xml?channel_id=' + ch.id)}&api_key=${API_KEY}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          return data.items.map(item => {
+            // 유튜브 영상 ID 추출하여 고화질 썸네일 생성
+            const videoId = item.link.split('v=')[1]?.split('&')[0];
+            return {
+              ...item,
+              author: ch.name,
+              thumbnail: videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : item.thumbnail
+            };
+          });
+        }
+        return [];
+      })
+      .catch(() => [])
+  );
+
   try {
     const [newsResults, eventResults, ytResults] = await Promise.all([
       Promise.all(fetchRSS(travelNewsSources)),
       Promise.all(fetchRSS(festivalSources)),
-      fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(youtubeSource)}&api_key=${API_KEY}`)
-        .then(res => res.json())
-        .then(data => data.status === 'ok' ? data.items : [])
-        .catch(() => [])
+      Promise.all(fetchYoutubeRSS(youtubeChannels))
     ]);
 
     let allNews = newsResults.flat();
-    
-    // --- 엄격한 여행 뉴스 필터링 ---
     const travelKeywords = ['여행', '관광', '축제', '투어', '명소', '나들이', '항공', '숙박', '호텔', '캠핑', '벚꽃', '트레킹', '지역', '패키지'];
-    let filteredNews = allNews.filter(n => 
-      travelKeywords.some(k => n.title.includes(k) || n.description?.includes(k))
-    );
-    
-    // 중복 제거 (제목 기준)
-    filteredNews = Array.from(new Set(filteredNews.map(a => a.title)))
-      .map(title => filteredNews.find(a => a.title === title));
-
-    // 최신순 정렬
+    let filteredNews = allNews.filter(n => travelKeywords.some(k => n.title.includes(k)));
+    filteredNews = Array.from(new Set(filteredNews.map(a => a.title))).map(title => filteredNews.find(a => a.title === title));
     filteredNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
-    if (filteredNews.length === 0) filteredNews = fallbackNews;
+    let allYoutube = ytResults.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
     return {
-      news: filteredNews,
+      news: filteredNews.length > 0 ? filteredNews : [],
       events: eventResults.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)),
-      youtube: ytResults
+      youtube: allYoutube.length > 0 ? allYoutube : fallbackYoutube
     };
   } catch (err) {
-    return { news: fallbackNews, events: [], youtube: [] };
+    return { news: [], events: [], youtube: fallbackYoutube };
   }
 }
 
@@ -162,7 +173,6 @@ function updateCalendarUI(container) {
   const daysInMonth = getDaysInMonth(currentMonth, currentYear);
   const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
   const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
-  
   const festivals = festivalData[currentMonth] || [];
 
   container.innerHTML = `
@@ -178,27 +188,21 @@ function updateCalendarUI(container) {
       ${Array.from({ length: daysInMonth }, (_, i) => {
         const day = i + 1;
         const festival = festivals.find(f => f.day === day);
-        return `
-          <div class="calendar-day ${festival ? 'has-event' : ''}" data-day="${day}">
-            <span class="day-num">${day}</span>
-            ${festival ? `<span class="event-dot" title="${festival.title}"></span>` : ''}
-          </div>
-        `;
+        return `<div class="calendar-day ${festival ? 'has-event' : ''}" data-day="${day}">
+          <span class="day-num">${day}</span>
+          ${festival ? `<span class="event-dot" title="${festival.title}"></span>` : ''}
+        </div>`;
       }).join('')}
     </div>
-    <div id="event-detail" class="event-detail">
-      <p class="detail-placeholder">날짜를 클릭하여 축제 정보를 확인하세요.</p>
-    </div>
+    <div id="event-detail" class="event-detail"><p class="detail-placeholder">날짜를 클릭하세요.</p></div>
   `;
 
   container.querySelector('#prev-month').onclick = () => {
-    state.currentMonth--;
-    if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+    state.currentMonth--; if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
     updateCalendarUI(container);
   };
   container.querySelector('#next-month').onclick = () => {
-    state.currentMonth++;
-    if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+    state.currentMonth++; if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
     updateCalendarUI(container);
   };
 
@@ -207,17 +211,7 @@ function updateCalendarUI(container) {
       const day = parseInt(el.dataset.day);
       const festival = festivals.find(f => f.day === day);
       const detailCont = container.querySelector('#event-detail');
-      if (festival) {
-        detailCont.innerHTML = `
-          <div class="festival-info">
-            <h4>${festival.title}</h4>
-            <p>📍 <strong>${festival.location}</strong></p>
-            <p>${festival.desc}</p>
-          </div>
-        `;
-      } else {
-        detailCont.innerHTML = `<p class="detail-placeholder">${day}일에는 등록된 주요 축제가 없습니다.</p>`;
-      }
+      detailCont.innerHTML = festival ? `<div class="festival-info"><h4>${festival.title}</h4><p>📍 <strong>${festival.location}</strong></p><p>${festival.desc}</p></div>` : `<p class="detail-placeholder">${day}일에는 등록된 축제가 없습니다.</p>`;
     };
   });
 }
@@ -240,7 +234,7 @@ function renderAuth() {
     <div class="auth-card">
       <div class="auth-hero">✈️</div>
       <h1>Wanderlust Korea</h1>
-      <p>전국 언론사의 실시간 여행 뉴스를 확인하세요.</p>
+      <p>실시간 여행 정보 포털에 오신 것을 환영합니다.</p>
       <input type="text" id="nickname" placeholder="여행자 닉네임" maxlength="10">
       <button id="start-btn">로그인</button>
     </div>
@@ -261,91 +255,64 @@ async function renderHome() {
     <header class="travel-header">
       <div class="header-inner">
         <h1 class="logo">Wanderlust Korea</h1>
-        <div class="header-right">
-          <span class="user-info">📍 <strong>${state.user.nickname}</strong> 님</span>
-        </div>
+        <div class="header-right"><span class="user-info">📍 <strong>${state.user.nickname}</strong> 님</span></div>
       </div>
     </header>
 
     <main class="dashboard-grid">
       <section class="top-row">
         <div class="panel news-panel">
-          <div class="panel-header">
-            <h3>📰 실시간 주요 여행 뉴스</h3>
-            <button id="refresh-news" class="btn-refresh">↻ 최신화</button>
-          </div>
-          <div id="travel-news-list" class="scroll-list">
-            <div class="loader-container"><div class="loader"></div></div>
-          </div>
+          <div class="panel-header"><h3>📰 실시간 주요 여행 뉴스</h3><button id="refresh-news" class="btn-refresh">↻</button></div>
+          <div id="travel-news-list" class="scroll-list"></div>
         </div>
-
         <div class="panel calendar-panel">
-          <div class="panel-header">
-            <h3>🗓️ 지역 축제 달력</h3>
-          </div>
-          <div id="calendar-container" class="calendar-container">
-            <!-- 캘린더가 여기에 렌더링됩니다 -->
-          </div>
+          <div class="panel-header"><h3>🗓️ 지역 축제 달력</h3></div>
+          <div id="calendar-container" class="calendar-container"></div>
         </div>
       </section>
 
       <section class="bottom-row">
         <div class="panel recommend-panel">
-          <div class="panel-header">
-            <h3>🌟 여행자 추천 공간</h3>
-            <button id="add-recommend-btn" class="btn-action">+ 추천 공유</button>
-          </div>
-          <div id="recommendation-list" class="scroll-list recommendation-list">
-            <div class="loader-container"><div class="loader"></div></div>
-          </div>
+          <div class="panel-header"><h3>🌟 여행자 추천 공간</h3><button id="add-recommend-btn" class="btn-action">+ 추천 공유</button></div>
+          <div id="recommendation-list" class="scroll-list"></div>
         </div>
-
         <div class="panel youtube-panel">
-          <div class="panel-header">
-            <h3>📽️ 인기 여행 유튜브</h3>
-          </div>
-          <div id="youtube-feed-list" class="scroll-list youtube-feed-list">
-            <div class="loader-container"><div class="loader"></div></div>
-          </div>
+          <div class="panel-header"><h3>📽️ 인기 여행 유튜브</h3></div>
+          <div id="youtube-feed-list" class="scroll-list"></div>
         </div>
       </section>
     </main>
   `;
   appContainer.appendChild(div);
 
-  const updateNews = async () => {
-    const newsCont = div.querySelector('#travel-news-list');
-    newsCont.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
+  const updateAllContent = async () => {
     const data = await fetchAllData();
-    newsCont.innerHTML = data.news.slice(0, 15).map(n => `
+    
+    // 뉴스 업데이트
+    const newsList = div.querySelector('#travel-news-list');
+    newsList.innerHTML = data.news.slice(0, 15).map(n => `
       <div class="news-item">
-        <div class="news-meta">
-          ${timeAgo(n.pubDate)} • <strong>${n.author}</strong>
-          ${n.title.includes('추천') || n.title.includes('명소') ? '<span class="tag-curation">TOP</span>' : '<span class="tag-news">Live</span>'}
-        </div>
+        <div class="news-meta">${timeAgo(n.pubDate)} • <strong>${n.author}</strong></div>
         <a href="${n.link}" target="_blank" class="news-link">${n.title}</a>
       </div>
-    `).join('') || '<p class="empty">최신 뉴스를 불러오는 중입니다...</p>';
-  };
+    `).join('') || '<p class="empty">뉴스가 없습니다.</p>';
 
-  const updateYoutube = async () => {
-    const ytCont = div.querySelector('#youtube-feed-list');
-    ytCont.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
-    const data = await fetchAllData();
-    ytCont.innerHTML = data.youtube.slice(0, 10).map(v => `
+    // 유튜브 업데이트
+    const ytList = div.querySelector('#youtube-feed-list');
+    ytList.innerHTML = data.youtube.slice(0, 12).map(v => `
       <div class="yt-item">
         <a href="${v.link}" target="_blank" class="yt-link">
           <div class="yt-thumb-wrap">
-            <img src="${v.thumbnail}" class="yt-thumb" alt="${v.title}">
+            <img src="${v.thumbnail}" class="yt-thumb" loading="lazy">
             <span class="yt-play-btn">▶</span>
           </div>
           <div class="yt-info">
             <div class="yt-title">${v.title}</div>
-            <div class="yt-meta">${timeAgo(v.pubDate)} • ${v.author}</div>
+            <div class="yt-meta">${v.author}</div>
           </div>
         </a>
       </div>
-    `).join('') || '<p class="empty">유튜브 콘텐츠를 불러오는 중입니다...</p>';
+    `).join('') || '<p class="empty">영상이 없습니다.</p>';
   };
 
   const renderRecommendations = () => {
@@ -353,33 +320,23 @@ async function renderHome() {
     cont.innerHTML = state.diaries.map(d => `
       <div class="recommend-item">
         <div class="recommend-header">
-          <span class="recommend-loc">📍 ${d.location || '전국'}</span>
+          <span class="recommend-loc">📍 ${d.location}</span>
           <span class="diary-user">@${d.user}</span>
         </div>
         <div class="diary-text">${d.text}</div>
         <div class="diary-time">${timeAgo(d.timestamp)}</div>
       </div>
-    `).join('') || '<div class="empty-state">최고의 여행지를 추천해 주세요! ✨</div>';
+    `).join('') || '<div class="empty-state">첫 추천을 남겨주세요! ✨</div>';
   };
 
-  updateNews();
-  updateYoutube();
+  updateAllContent();
   updateCalendarUI(div.querySelector('#calendar-container'));
-  
-  div.querySelector('#refresh-news').onclick = updateNews;
+  div.querySelector('#refresh-news').onclick = updateAllContent;
 
   div.querySelector('#add-recommend-btn').onclick = () => {
-    const location = prompt('추천 지역이나 장소를 입력해 주세요:');
-    if (!location) return;
-    const text = prompt('추천 이유나 팁을 남겨주세요:');
-    if (text) {
-      state.diaries.unshift({ 
-        id: Date.now(), 
-        location,
-        text, 
-        timestamp: new Date(), 
-        user: state.user.nickname 
-      });
+    const location = prompt('추천 장소:'); if (!location) return;
+    const text = prompt('추천 이유:'); if (text) {
+      state.diaries.unshift({ id: Date.now(), location, text, timestamp: new Date(), user: state.user.nickname });
       renderRecommendations();
     }
   };
