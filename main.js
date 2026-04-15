@@ -4,7 +4,55 @@ const state = {
   user: null,
   diaries: [],
   travelNews: [],
-  localEvents: []
+  localEvents: [],
+  currentMonth: new Date().getMonth(), // 0-11
+  currentYear: new Date().getFullYear()
+};
+
+// --- 전국 주요 축제 데이터 (연간 일정) ---
+const festivalData = {
+  0: [ // 1월
+    { day: 1, title: "정동진 해맞이 축제", location: "강릉", desc: "새해 첫 해돋이 명소" },
+    { day: 15, title: "화천 산천어 축제", location: "화천", desc: "대한민국 대표 겨울 축제" }
+  ],
+  1: [ // 2월
+    { day: 5, title: "제주 들불 축제", location: "제주", desc: "새별오름 불 놓기 행사" }
+  ],
+  2: [ // 3월
+    { day: 22, title: "진해 군항제", location: "창원", desc: "국내 최대 벚꽃 축제" },
+    { day: 28, title: "구례 산수유 꽃 축제", location: "구례", desc: "노란 산수유 꽃의 향연" }
+  ],
+  3: [ // 4월
+    { day: 5, title: "여의도 봄꽃 축제", location: "서울", desc: "한강변 벚꽃 나들이" },
+    { day: 15, title: "경주 벚꽃 축제", location: "경주", desc: "천년고도에서의 벚꽃 구경" },
+    { day: 25, title: "고양 국제 꽃 박람회", location: "고양", desc: "전 세계 꽃들의 축제" }
+  ],
+  4: [ // 5월
+    { day: 5, title: "보성 다향 대축제", location: "보성", desc: "초록빛 차 밭에서의 휴식" },
+    { day: 15, title: "담양 대나무 축제", location: "담양", desc: "시원한 대숲 산책" }
+  ],
+  5: [ // 6월
+    { day: 10, title: "강릉 단오제", location: "강릉", desc: "유네스코 인류무형문화유산" }
+  ],
+  6: [ // 7월
+    { day: 19, title: "보령 머드 축제", location: "보령", desc: "전 세계인이 즐기는 진흙 축제" }
+  ],
+  7: [ // 8월
+    { day: 1, title: "부산 바다 축제", location: "부산", desc: "해운대, 광안리 해변 축제" }
+  ],
+  8: [ // 9월
+    { day: 20, title: "안동 국제 탈춤 축제", location: "안동", desc: "한국 전통 탈춤의 정수" }
+  ],
+  9: [ // 10월
+    { day: 1, title: "진주 남강 유등 축제", location: "진주", desc: "밤하늘을 수놓는 화려한 유등" },
+    { day: 15, title: "부산 불꽃 축제", location: "부산", desc: "광안대교 배경의 대규모 불꽃쇼" }
+  ],
+  10: [ // 11월
+    { day: 5, title: "서울 빛 초롱 축제", location: "서울", desc: "청계천 등불 전시" }
+  ],
+  11: [ // 12월
+    { day: 31, title: "간절곶 소망 우체통", location: "울산", desc: "한반도에서 해가 가장 먼저 뜨는 곳" }
+  ]
 };
 
 // --- 확장된 국내 언론사 뉴스 API 소스 ---
@@ -99,6 +147,80 @@ function timeAgo(date) {
   return new Date(date).toLocaleDateString();
 }
 
+// --- 캘린더 관련 함수 ---
+function getDaysInMonth(month, year) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(month, year) {
+  return new Date(year, month, 1).getDay();
+}
+
+function updateCalendarUI(container) {
+  const { currentMonth, currentYear } = state;
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+  const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+  const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+  
+  const festivals = festivalData[currentMonth] || [];
+
+  container.innerHTML = `
+    <div class="calendar-header">
+      <button id="prev-month" class="btn-cal-nav">◀</button>
+      <span class="calendar-title">${currentYear}년 ${monthNames[currentMonth]}</span>
+      <button id="next-month" class="btn-cal-nav">▶</button>
+    </div>
+    <div class="calendar-grid">
+      <div class="day-name">일</div><div class="day-name">월</div><div class="day-name">화</div>
+      <div class="day-name">수</div><div class="day-name">목</div><div class="day-name">금</div><div class="day-name">토</div>
+      ${Array(firstDay).fill('<div class="empty-day"></div>').join('')}
+      ${Array.from({ length: daysInMonth }, (_, i) => {
+        const day = i + 1;
+        const festival = festivals.find(f => f.day === day);
+        return `
+          <div class="calendar-day ${festival ? 'has-event' : ''}" data-day="${day}">
+            <span class="day-num">${day}</span>
+            ${festival ? `<span class="event-dot" title="${festival.title}"></span>` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
+    <div id="event-detail" class="event-detail">
+      <p class="detail-placeholder">날짜를 클릭하여 축제 정보를 확인하세요.</p>
+    </div>
+  `;
+
+  container.querySelector('#prev-month').onclick = () => {
+    state.currentMonth--;
+    if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+    updateCalendarUI(container);
+  };
+  container.querySelector('#next-month').onclick = () => {
+    state.currentMonth++;
+    if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+    updateCalendarUI(container);
+  };
+
+  container.querySelectorAll('.calendar-day').forEach(el => {
+    el.onclick = () => {
+      const day = parseInt(el.dataset.day);
+      const festival = festivals.find(f => f.day === day);
+      const detailCont = container.querySelector('#event-detail');
+      if (festival) {
+        detailCont.innerHTML = `
+          <div class="festival-info">
+            <h4>${festival.title}</h4>
+            <p>📍 <strong>${festival.location}</strong></p>
+            <p>${festival.desc}</p>
+          </div>
+        `;
+      } else {
+        detailCont.innerHTML = `<p class="detail-placeholder">${day}일에는 등록된 주요 축제가 없습니다.</p>`;
+      }
+    };
+  });
+}
+
 // --- 뷰 렌더링 ---
 function render() {
   appContainer.innerHTML = '';
@@ -156,13 +278,12 @@ async function renderHome() {
           </div>
         </div>
 
-        <div class="panel event-panel">
+        <div class="panel calendar-panel">
           <div class="panel-header">
-            <h3>🎨 지역 축제 & 문화 정보</h3>
-            <button id="refresh-events" class="btn-refresh">↻ 최신화</button>
+            <h3>🗓️ 지역 축제 달력</h3>
           </div>
-          <div id="event-feed-list" class="scroll-list">
-            <div class="loader-container"><div class="loader)</div></div>
+          <div id="calendar-container" class="calendar-container">
+            <!-- 캘린더가 여기에 렌더링됩니다 -->
           </div>
         </div>
       </section>
@@ -195,32 +316,10 @@ async function renderHome() {
     `).join('') || '<p class="empty">최신 뉴스를 불러오는 중입니다...</p>';
   };
 
-  const updateEvents = async () => {
-    const feedCont = div.querySelector('#event-feed-list');
-    feedCont.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
-    const data = await fetchAllData();
-    const combinedFeed = [
-      ...data.youtube.map(v => ({ ...v, type: '유튜브', icon: '📽️', author: '대한민국구석구석' })),
-      ...data.events.map(e => ({ ...e, type: e.link.includes('blog.naver') ? '블로그' : '행사', icon: e.link.includes('blog.naver') ? '✍️' : '🎡', author: e.link.includes('blog.naver') ? '공식블로그' : '문화포털' }))
-    ].sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
-    feedCont.innerHTML = combinedFeed.slice(0, 15).map(item => `
-      <div class="event-card type-${item.type === '유튜브' ? 'yt' : 'blog'}">
-        <div class="item-badge">${item.icon} ${item.type}</div>
-        <a href="${item.link}" target="_blank" class="event-title">${item.title}</a>
-        <div class="event-meta">
-          <span>📅 ${new Date(item.pubDate).toLocaleDateString()}</span>
-          <span class="source">${item.author}</span>
-        </div>
-      </div>
-    `).join('') || '<p class="empty">콘텐츠를 불러오는 중입니다...</p>';
-  };
-
   updateNews();
-  updateEvents();
+  updateCalendarUI(div.querySelector('#calendar-container'));
   
   div.querySelector('#refresh-news').onclick = updateNews;
-  div.querySelector('#refresh-events').onclick = updateEvents;
 
   const renderDiaries = () => {
     const cont = div.querySelector('#my-diary-list');
