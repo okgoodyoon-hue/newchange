@@ -290,12 +290,23 @@ async function renderHome() {
       </section>
 
       <section class="bottom-row">
-        <div class="panel diary-panel">
+        <div class="panel recommend-panel">
           <div class="panel-header">
             <h3>🌟 여행자 추천 공간</h3>
-            <button id="add-recommend-btn" class="btn-action">+ 추천 명소 공유</button>
+            <button id="add-recommend-btn" class="btn-action">+ 추천 공유</button>
           </div>
-          <div id="recommendation-list" class="diary-grid"></div>
+          <div id="recommendation-list" class="scroll-list recommendation-list">
+            <div class="loader-container"><div class="loader"></div></div>
+          </div>
+        </div>
+
+        <div class="panel youtube-panel">
+          <div class="panel-header">
+            <h3>📽️ 인기 여행 유튜브</h3>
+          </div>
+          <div id="youtube-feed-list" class="scroll-list youtube-feed-list">
+            <div class="loader-container"><div class="loader"></div></div>
+          </div>
         </div>
       </section>
     </main>
@@ -317,15 +328,30 @@ async function renderHome() {
     `).join('') || '<p class="empty">최신 뉴스를 불러오는 중입니다...</p>';
   };
 
-  updateNews();
-  updateCalendarUI(div.querySelector('#calendar-container'));
-  
-  div.querySelector('#refresh-news').onclick = updateNews;
+  const updateYoutube = async () => {
+    const ytCont = div.querySelector('#youtube-feed-list');
+    ytCont.innerHTML = '<div class="loader-container"><div class="loader"></div></div>';
+    const data = await fetchAllData();
+    ytCont.innerHTML = data.youtube.slice(0, 10).map(v => `
+      <div class="yt-item">
+        <a href="${v.link}" target="_blank" class="yt-link">
+          <div class="yt-thumb-wrap">
+            <img src="${v.thumbnail}" class="yt-thumb" alt="${v.title}">
+            <span class="yt-play-btn">▶</span>
+          </div>
+          <div class="yt-info">
+            <div class="yt-title">${v.title}</div>
+            <div class="yt-meta">${timeAgo(v.pubDate)} • ${v.author}</div>
+          </div>
+        </a>
+      </div>
+    `).join('') || '<p class="empty">유튜브 콘텐츠를 불러오는 중입니다...</p>';
+  };
 
   const renderRecommendations = () => {
     const cont = div.querySelector('#recommendation-list');
     cont.innerHTML = state.diaries.map(d => `
-      <div class="diary-card recommend-card">
+      <div class="recommend-item">
         <div class="recommend-header">
           <span class="recommend-loc">📍 ${d.location || '전국'}</span>
           <span class="diary-user">@${d.user}</span>
@@ -333,13 +359,19 @@ async function renderHome() {
         <div class="diary-text">${d.text}</div>
         <div class="diary-time">${timeAgo(d.timestamp)}</div>
       </div>
-    `).join('') || '<div class="empty-state">당신이 알고 있는 최고의 여행지를 추천해 주세요! ✨</div>';
+    `).join('') || '<div class="empty-state">최고의 여행지를 추천해 주세요! ✨</div>';
   };
 
+  updateNews();
+  updateYoutube();
+  updateCalendarUI(div.querySelector('#calendar-container'));
+  
+  div.querySelector('#refresh-news').onclick = updateNews;
+
   div.querySelector('#add-recommend-btn').onclick = () => {
-    const location = prompt('추천하고 싶은 지역이나 장소를 입력해 주세요 (예: 제주도, 가로수길):');
+    const location = prompt('추천 지역이나 장소를 입력해 주세요:');
     if (!location) return;
-    const text = prompt('이 장소를 추천하는 이유나 팁을 남겨주세요:');
+    const text = prompt('추천 이유나 팁을 남겨주세요:');
     if (text) {
       state.diaries.unshift({ 
         id: Date.now(), 
