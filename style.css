@@ -151,13 +151,25 @@ body {
   background: var(--primary);
   border-radius: 50%;
 }
+.event-dot.dynamic-dot {
+  background: var(--secondary);
+  box-shadow: 0 0 5px var(--secondary);
+}
+
+.event-divider {
+  border: none;
+  border-top: 1px dashed #ddd;
+  margin: 1rem 0;
+}
 
 .event-detail {
   margin-top: 1rem;
   padding: 1rem;
   background: var(--light);
   border-radius: 12px;
-  min-height: 80px;
+  min-height: 100px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .detail-placeholder { font-size: 0.85rem; color: #aaa; text-align: center; margin-top: 0.5rem; }
 .festival-info h4 { color: var(--primary); margin-bottom: 0.5rem; font-size: 1rem; }

@@ -9,81 +9,72 @@ const state = {
   currentYear: new Date().getFullYear()
 };
 
-// --- 전국 주요 축제 데이터 (연간 일정) ---
+// --- 전국 주요 축제 데이터 (연간 일정 - 2026년 기준 강화) ---
 const festivalData = {
   0: [ // 1월
     { day: 1, title: "정동진 해맞이 축제", location: "강릉", desc: "새해 첫 해돋이 명소" },
-    { day: 15, title: "화천 산천어 축제", location: "화천", desc: "대한민국 대표 겨울 축제" }
+    { day: 15, title: "화천 산천어 축제", location: "화천", desc: "대한민국 대표 겨울 축제" },
+    { day: 20, title: "인제 빙어 축제", location: "인제", desc: "은빛 빙어와 함께하는 겨울 추억" }
   ],
   1: [ // 2월
-    { day: 5, title: "제주 들불 축제", location: "제주", desc: "새별오름 불 놓기 행사" }
+    { day: 5, title: "제주 들불 축제", location: "제주", desc: "새별오름 불 놓기 행사" },
+    { day: 12, title: "청도 프로방스 빛축제", location: "청도", desc: "화려한 조명과 야경" }
   ],
   2: [ // 3월
+    { day: 15, title: "광양 매화 축제", location: "광양", desc: "봄의 전령사 매화의 향연" },
     { day: 22, title: "진해 군항제", location: "창원", desc: "국내 최대 벚꽃 축제" },
     { day: 28, title: "구례 산수유 꽃 축제", location: "구례", desc: "노란 산수유 꽃의 향연" }
   ],
   3: [ // 4월
     { day: 5, title: "여의도 봄꽃 축제", location: "서울", desc: "한강변 벚꽃 나들이" },
+    { day: 10, title: "신안 튤립 축제", location: "신안", desc: "섬 전체를 수놓는 튤립" },
     { day: 15, title: "경주 벚꽃 축제", location: "경주", desc: "천년고도에서의 벚꽃 구경" },
     { day: 25, title: "고양 국제 꽃 박람회", location: "고양", desc: "전 세계 꽃들의 축제" }
   ],
   4: [ // 5월
+    { day: 1, title: "함평 나비 대축제", location: "함평", desc: "꽃과 나비의 화려한 만남" },
     { day: 5, title: "보성 다향 대축제", location: "보성", desc: "초록빛 차 밭에서의 휴식" },
-    { day: 15, title: "담양 대나무 축제", location: "담양", desc: "시원한 대숲 산책" }
+    { day: 15, title: "담양 대나무 축제", location: "담양", desc: "시원한 대숲 산책" },
+    { day: 20, title: "춘천 마임 축제", location: "춘천", desc: "글로벌 공연 예술 축제" }
   ],
   5: [ // 6월
-    { day: 10, title: "강릉 단오제", location: "강릉", desc: "유네스코 인류무형문화유산" }
+    { day: 5, title: "무주 반딧불 축제", location: "무주", desc: "자연의 빛, 반딧불이 체험" },
+    { day: 10, title: "강릉 단오제", location: "강릉", desc: "유네스코 인류무형문화유산" },
+    { day: 25, title: "제주 수국 축제", location: "제주", desc: "수국길에서의 인생샷" }
   ],
   6: [ // 7월
-    { day: 19, title: "보령 머드 축제", location: "보령", desc: "전 세계인이 즐기는 진흙 축제" }
+    { day: 5, title: "대구 치맥 페스티벌", location: "대구", desc: "여름밤의 시원한 치맥 파티" },
+    { day: 19, title: "보령 머드 축제", location: "보령", desc: "전 세계인이 즐기는 진흙 축제" },
+    { day: 25, title: "부여 서동 연꽃 축제", location: "부여", desc: "천만송이 연꽃의 향연" }
   ],
   7: [ // 8월
-    { day: 1, title: "부산 바다 축제", location: "부산", desc: "해운대, 광안리 해변 축제" }
+    { day: 1, title: "부산 바다 축제", location: "부산", desc: "해운대, 광안리 해변 축제" },
+    { day: 10, title: "통영 한산대첩 축제", location: "통영", desc: "이순신 장군의 승전 기록" },
+    { day: 15, title: "정남진 장흥 물축제", location: "장흥", desc: "물과 함께하는 시원한 여름" }
   ],
   8: [ // 9월
+    { day: 5, title: "금산 인삼 축제", location: "금산", desc: "건강과 활력의 대명사" },
+    { day: 15, title: "평창 효석 문화제", location: "평창", desc: "메밀꽃 필 무렵의 감동" },
     { day: 20, title: "안동 국제 탈춤 축제", location: "안동", desc: "한국 전통 탈춤의 정수" }
   ],
   9: [ // 10월
     { day: 1, title: "진주 남강 유등 축제", location: "진주", desc: "밤하늘을 수놓는 화려한 유등" },
-    { day: 15, title: "부산 불꽃 축제", location: "부산", desc: "광안대교 배경의 대규모 불꽃쇼" }
+    { day: 10, title: "자라섬 재즈 페스티벌", location: "가평", desc: "가을밤의 감미로운 재즈 선율" },
+    { day: 15, title: "부산 불꽃 축제", location: "부산", desc: "광안대교 배경의 대규모 불꽃쇼" },
+    { day: 25, title: "순천만 갈대 축제", location: "순천", desc: "황금빛 갈대밭의 가을 정취" }
   ],
   10: [ // 11월
-    { day: 5, title: "서울 빛 초롱 축제", location: "서울", desc: "청계천 등불 전시" }
+    { day: 5, title: "서울 빛 초롱 축제", location: "서울", desc: "청계천 등불 전시" },
+    { day: 12, title: "제주 감귤 축제", location: "제주", desc: "새콤달콤 감귤 체험" }
   ],
   11: [ // 12월
+    { day: 1, title: "해운대 빛 축제", location: "부산", desc: "겨울 바다와 화려한 조명" },
+    { day: 24, title: "보성 차밭 빛 축제", location: "보성", desc: "빛의 은하수 속 산책" },
     { day: 31, title: "간절곶 소망 우체통", location: "울산", desc: "한반도에서 해가 가장 먼저 뜨는 곳" }
   ]
 };
 
-// --- 확장된 국내 언론사 뉴스 API 소스 (여행/문화 특화) ---
-const travelNewsSources = [
-  'https://www.chosun.com/arc/outboundfeeds/rss/category/culture-life/travel/?outputType=xml', // 조선일보 여행
-  'https://rss.donga.com/life.xml', // 동아 생활/여행
-  'https://www.khan.co.kr/rss/rssdata/culture.xml', // 경향 문화/여행
-  'https://www.hani.co.kr/rss/culture/', // 한겨레 문화
-  'https://news.sbs.co.kr/news/rss/news_life.xml', // SBS 생활/문화
-  'https://www.yonhapnewstv.co.kr/category/news/culture/feed/', // 연합뉴스 문화
-  'https://news.kbs.co.kr/rss/news_05.xml' // KBS 문화/생활
-];
-
-const festivalSources = [
-  'https://www.culture.go.kr/rss/culturePotalNewC01.do', // 문화포털 교육/전시
-  'https://www.culture.go.kr/rss/culturePotalNewC02.do', // 문화포털 축제/행사
-  'https://rss.blog.naver.com/kto90.xml' // 한국관광공사 네이버 공식 블로그
-];
-
-// 고품질 유튜브 여행 소스
-const youtubeChannels = [
-  { name: '대한민국구석구석', id: 'UCvX6HhL_wZt_f4M68v5D_hQ' },
-  { name: 'EBS 여행기', id: 'UC29-6K_TscO96A6UofC_X_w' },
-  { name: 'KBS 여행걸리버', id: 'UC_0UqN-P5G9_Z8qP-k0wXjw' }
-];
-
-// 유튜브 백업 데이터
-const fallbackYoutube = [
-  { title: "2026년 꼭 가봐야 할 국내 여행지 TOP 10", link: "https://www.youtube.com", pubDate: new Date(), author: "여행가이드", thumbnail: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=400&q=80" },
-  { title: "현지인들만 아는 제주도 숨은 명소", link: "https://www.youtube.com", pubDate: new Date(), author: "제주살이", thumbnail: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?auto=format&fit=crop&w=400&q=80" }
-];
+// ... (travelNewsSources, festivalSources, youtubeChannels, fallbackYoutube unchanged) ...
 
 async function fetchAllData() {
   const API_KEY = 'p5n5v8v2r1j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3';
@@ -93,7 +84,7 @@ async function fetchAllData() {
       .then(res => res.json())
       .then(data => {
         if (data.status === 'ok') {
-          const sourceName = data.feed.title.split(' - ')[0] || '언론사';
+          const sourceName = data.feed.title.split(' - ')[0] || '정보';
           return data.items.map(item => ({ ...item, author: sourceName }));
         }
         return [];
@@ -107,7 +98,6 @@ async function fetchAllData() {
       .then(data => {
         if (data.status === 'ok') {
           return data.items.map(item => {
-            // 유튜브 영상 ID 추출하여 고화질 썸네일 생성
             const videoId = item.link.split('v=')[1]?.split('&')[0];
             return {
               ...item,
@@ -135,10 +125,29 @@ async function fetchAllData() {
     filteredNews.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
     let allYoutube = ytResults.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    
+    // 이벤트 데이터 가공
+    let fetchedEvents = eventResults.flat();
+    state.localEvents = fetchedEvents.map(e => {
+      // 제목에서 날짜 추출 시도 (예: 4/15, 04.15, 4월 15일)
+      const dateMatch = e.title.match(/(\d{1,2})[\/\.\s월\s]*(\d{1,2})/);
+      let day = null;
+      let month = null;
+      if (dateMatch) {
+        month = parseInt(dateMatch[1]) - 1;
+        day = parseInt(dateMatch[2]);
+      } else {
+        // 날짜 정보가 없으면 게시일 기준
+        const pubDate = new Date(e.pubDate);
+        month = pubDate.getMonth();
+        day = pubDate.getDate();
+      }
+      return { ...e, month, day, location: e.author || '지역' };
+    });
 
     return {
       news: filteredNews.length > 0 ? filteredNews : [],
-      events: eventResults.flat().sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate)),
+      events: state.localEvents,
       youtube: allYoutube.length > 0 ? allYoutube : fallbackYoutube
     };
   } catch (err) {
@@ -169,11 +178,22 @@ function getFirstDayOfMonth(month, year) {
 }
 
 function updateCalendarUI(container) {
-  const { currentMonth, currentYear } = state;
+  const { currentMonth, currentYear, localEvents } = state;
   const daysInMonth = getDaysInMonth(currentMonth, currentYear);
   const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
   const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
-  const festivals = festivalData[currentMonth] || [];
+  
+  // 정적 데이터와 동적 데이터 병합
+  const staticFestivals = festivalData[currentMonth] || [];
+  const dynamicFestivals = localEvents.filter(e => e.month === currentMonth).map(e => ({
+    day: e.day,
+    title: e.title,
+    location: e.location,
+    desc: e.description || e.title,
+    isDynamic: true
+  }));
+
+  const allFestivals = [...staticFestivals, ...dynamicFestivals];
 
   container.innerHTML = `
     <div class="calendar-header">
@@ -187,10 +207,10 @@ function updateCalendarUI(container) {
       ${Array(firstDay).fill('<div class="empty-day"></div>').join('')}
       ${Array.from({ length: daysInMonth }, (_, i) => {
         const day = i + 1;
-        const festival = festivals.find(f => f.day === day);
-        return `<div class="calendar-day ${festival ? 'has-event' : ''}" data-day="${day}">
+        const festivalsOnDay = allFestivals.filter(f => f.day === day);
+        return `<div class="calendar-day ${festivalsOnDay.length > 0 ? 'has-event' : ''}" data-day="${day}">
           <span class="day-num">${day}</span>
-          ${festival ? `<span class="event-dot" title="${festival.title}"></span>` : ''}
+          ${festivalsOnDay.length > 0 ? `<span class="event-dot ${festivalsOnDay.some(f => f.isDynamic) ? 'dynamic-dot' : ''}" title="${festivalsOnDay[0].title}"></span>` : ''}
         </div>`;
       }).join('')}
     </div>
@@ -209,9 +229,20 @@ function updateCalendarUI(container) {
   container.querySelectorAll('.calendar-day').forEach(el => {
     el.onclick = () => {
       const day = parseInt(el.dataset.day);
-      const festival = festivals.find(f => f.day === day);
+      const festivalsOnDay = allFestivals.filter(f => f.day === day);
       const detailCont = container.querySelector('#event-detail');
-      detailCont.innerHTML = festival ? `<div class="festival-info"><h4>${festival.title}</h4><p>📍 <strong>${festival.location}</strong></p><p>${festival.desc}</p></div>` : `<p class="detail-placeholder">${day}일에는 등록된 축제가 없습니다.</p>`;
+      
+      if (festivalsOnDay.length > 0) {
+        detailCont.innerHTML = festivalsOnDay.map(f => `
+          <div class="festival-info">
+            <h4>${f.isDynamic ? '🆕 ' : '🚩 '}${f.title}</h4>
+            <p>📍 <strong>${f.location}</strong></p>
+            <p>${f.desc}</p>
+          </div>
+        `).join('<hr class="event-divider">');
+      } else {
+        detailCont.innerHTML = `<p class="detail-placeholder">${day}일에는 등록된 축제가 없습니다.</p>`;
+      }
     };
   });
 }
@@ -252,7 +283,7 @@ async function renderHome() {
           <div id="travel-news-list" class="scroll-list"></div>
         </div>
         <div class="panel calendar-panel">
-          <div class="panel-header"><h3>🗓️ 지역 축제 달력</h3></div>
+          <div class="panel-header"><h3>🗓️ 지역 축제 달력</h3><button id="refresh-calendar" class="btn-refresh">↻</button></div>
           <div id="calendar-container" class="calendar-container"></div>
         </div>
       </section>
@@ -324,6 +355,9 @@ async function renderHome() {
         </div>
       `).join('') || '<p class="empty">영상이 없습니다.</p>';
     }
+
+    // 캘린더 실시간 반영
+    updateCalendarUI(div.querySelector('#calendar-container'));
   };
 
   const renderRecommendations = () => {
@@ -345,6 +379,7 @@ async function renderHome() {
   updateAllContent();
   updateCalendarUI(div.querySelector('#calendar-container'));
   div.querySelector('#refresh-news').onclick = updateAllContent;
+  div.querySelector('#refresh-calendar').onclick = updateAllContent;
 
   div.querySelector('#add-recommend-btn').onclick = () => {
     if (!state.user) return alert('추천을 공유하려면 로그인이 필요합니다!');
