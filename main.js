@@ -98,7 +98,7 @@ async function fetchAllData() {
       .then(data => {
         if (data.status === 'ok') {
           return data.items.map(item => {
-            const videoId = item.link.split('v=')[1]?.split('&')[0];
+            const videoId = item.link.split('v=')[1]?.split('&')[0] || item.link.split('/').pop();
             return {
               ...item,
               author: ch.name,
@@ -214,8 +214,31 @@ function updateCalendarUI(container) {
         </div>`;
       }).join('')}
     </div>
-    <div id="event-detail" class="event-detail"><p class="detail-placeholder">날짜를 클릭하세요.</p></div>
+    <div id="event-detail" class="event-detail"></div>
   `;
+
+  const detailCont = container.querySelector('#event-detail');
+  const renderDetails = (festivals, day) => {
+    if (festivals.length > 0) {
+      detailCont.innerHTML = festivals.map(f => `
+        <div class="festival-info">
+          <h4>${f.isDynamic ? '🆕 ' : '🚩 '}${f.title}</h4>
+          <p>📍 <strong>${f.location}</strong></p>
+          <p class="festival-desc">${f.desc}</p>
+        </div>
+      `).join('<hr class="event-divider">');
+    } else {
+      detailCont.innerHTML = `<p class="detail-placeholder">${day ? day + '일에는 ' : ''}등록된 축제가 없습니다.</p>`;
+    }
+  };
+
+  // 초기 상태: 이번 달 첫 번째 행사를 보여줌
+  if (allFestivals.length > 0) {
+    const firstEvent = allFestivals.sort((a,b) => a.day - b.day)[0];
+    renderDetails([firstEvent], firstEvent.day);
+  } else {
+    detailCont.innerHTML = `<p class="detail-placeholder">이번 달에는 예정된 축제가 없습니다.</p>`;
+  }
 
   container.querySelector('#prev-month').onclick = () => {
     state.currentMonth--; if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
@@ -230,19 +253,9 @@ function updateCalendarUI(container) {
     el.onclick = () => {
       const day = parseInt(el.dataset.day);
       const festivalsOnDay = allFestivals.filter(f => f.day === day);
-      const detailCont = container.querySelector('#event-detail');
-      
-      if (festivalsOnDay.length > 0) {
-        detailCont.innerHTML = festivalsOnDay.map(f => `
-          <div class="festival-info">
-            <h4>${f.isDynamic ? '🆕 ' : '🚩 '}${f.title}</h4>
-            <p>📍 <strong>${f.location}</strong></p>
-            <p>${f.desc}</p>
-          </div>
-        `).join('<hr class="event-divider">');
-      } else {
-        detailCont.innerHTML = `<p class="detail-placeholder">${day}일에는 등록된 축제가 없습니다.</p>`;
-      }
+      renderDetails(festivalsOnDay, day);
+      container.querySelectorAll('.calendar-day').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
     };
   });
 }
