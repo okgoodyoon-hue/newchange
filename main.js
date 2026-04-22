@@ -1,5 +1,5 @@
 // --- 상태 관리 ---
-let currentView = 'auth';
+let currentView = 'home';
 const state = {
   user: null,
   diaries: [],
@@ -219,43 +219,29 @@ function updateCalendarUI(container) {
 // --- 뷰 렌더링 ---
 function render() {
   appContainer.innerHTML = '';
-  if (!state.user && currentView !== 'auth') { renderAuth(); return; }
   switch (currentView) {
-    case 'auth': renderAuth(); break;
     case 'home': renderHome(); break;
     default: renderHome();
   }
 }
 
-function renderAuth() {
-  const div = document.createElement('div');
-  div.className = 'view-auth';
-  div.innerHTML = `
-    <div class="auth-card">
-      <div class="auth-hero">✈️</div>
-      <h1>Wanderlust Korea</h1>
-      <p>실시간 여행 정보 포털에 오신 것을 환영합니다.</p>
-      <input type="text" id="nickname" placeholder="여행자 닉네임" maxlength="10">
-      <button id="start-btn">로그인</button>
-    </div>
-  `;
-  div.querySelector('#start-btn').onclick = () => {
-    const nick = div.querySelector('#nickname').value.trim();
-    if (!nick) return alert('닉네임을 입력해 주세요!');
-    state.user = { nickname: nick };
-    navigate('home');
-  };
-  appContainer.appendChild(div);
-}
-
 async function renderHome() {
   const div = document.createElement('div');
   div.className = 'travel-dashboard fade-in';
+
+  const headerContent = state.user 
+    ? `<span class="user-info">📍 <strong>${state.user.nickname}</strong> 님</span>
+       <button id="logout-btn" class="btn-logout">로그아웃</button>`
+    : `<div class="header-login-form">
+         <input type="text" id="header-nickname" placeholder="닉네임 입력" maxlength="10">
+         <button id="header-login-btn" class="btn-login-sm">로그인</button>
+       </div>`;
+
   div.innerHTML = `
     <header class="travel-header">
       <div class="header-inner">
         <h1 class="logo">Wanderlust Korea</h1>
-        <div class="header-right"><span class="user-info">📍 <strong>${state.user.nickname}</strong> 님</span></div>
+        <div class="header-right">${headerContent}</div>
       </div>
     </header>
 
@@ -285,48 +271,75 @@ async function renderHome() {
   `;
   appContainer.appendChild(div);
 
+  // 이벤트 바인딩 (로그인/로그아웃)
+  if (state.user) {
+    div.querySelector('#logout-btn').onclick = () => {
+      state.user = null;
+      render();
+    };
+  } else {
+    const loginBtn = div.querySelector('#header-login-btn');
+    const nickInput = div.querySelector('#header-nickname');
+    
+    loginBtn.onclick = () => {
+      const nick = nickInput.value.trim();
+      if (!nick) return alert('닉네임을 입력해 주세요!');
+      state.user = { nickname: nick };
+      render();
+    };
+    nickInput.onkeypress = (e) => {
+      if (e.key === 'Enter') loginBtn.click();
+    };
+  }
+
   const updateAllContent = async () => {
     const data = await fetchAllData();
     
     // 뉴스 업데이트
     const newsList = div.querySelector('#travel-news-list');
-    newsList.innerHTML = data.news.slice(0, 15).map(n => `
-      <div class="news-item">
-        <div class="news-meta">${timeAgo(n.pubDate)} • <strong>${n.author}</strong></div>
-        <a href="${n.link}" target="_blank" class="news-link">${n.title}</a>
-      </div>
-    `).join('') || '<p class="empty">뉴스가 없습니다.</p>';
+    if (newsList) {
+      newsList.innerHTML = data.news.slice(0, 15).map(n => `
+        <div class="news-item">
+          <div class="news-meta">${timeAgo(n.pubDate)} • <strong>${n.author}</strong></div>
+          <a href="${n.link}" target="_blank" class="news-link">${n.title}</a>
+        </div>
+      `).join('') || '<p class="empty">뉴스가 없습니다.</p>';
+    }
 
     // 유튜브 업데이트
     const ytList = div.querySelector('#youtube-feed-list');
-    ytList.innerHTML = data.youtube.slice(0, 12).map(v => `
-      <div class="yt-item">
-        <a href="${v.link}" target="_blank" class="yt-link">
-          <div class="yt-thumb-wrap">
-            <img src="${v.thumbnail}" class="yt-thumb" loading="lazy">
-            <span class="yt-play-btn">▶</span>
-          </div>
-          <div class="yt-info">
-            <div class="yt-title">${v.title}</div>
-            <div class="yt-meta">${v.author}</div>
-          </div>
-        </a>
-      </div>
-    `).join('') || '<p class="empty">영상이 없습니다.</p>';
+    if (ytList) {
+      ytList.innerHTML = data.youtube.slice(0, 12).map(v => `
+        <div class="yt-item">
+          <a href="${v.link}" target="_blank" class="yt-link">
+            <div class="yt-thumb-wrap">
+              <img src="${v.thumbnail}" class="yt-thumb" loading="lazy">
+              <span class="yt-play-btn">▶</span>
+            </div>
+            <div class="yt-info">
+              <div class="yt-title">${v.title}</div>
+              <div class="yt-meta">${v.author}</div>
+            </div>
+          </a>
+        </div>
+      `).join('') || '<p class="empty">영상이 없습니다.</p>';
+    }
   };
 
   const renderRecommendations = () => {
     const cont = div.querySelector('#recommendation-list');
-    cont.innerHTML = state.diaries.map(d => `
-      <div class="recommend-item">
-        <div class="recommend-header">
-          <span class="recommend-loc">📍 ${d.location}</span>
-          <span class="diary-user">@${d.user}</span>
+    if (cont) {
+      cont.innerHTML = state.diaries.map(d => `
+        <div class="recommend-item">
+          <div class="recommend-header">
+            <span class="recommend-loc">📍 ${d.location}</span>
+            <span class="diary-user">@${d.user}</span>
+          </div>
+          <div class="diary-text">${d.text}</div>
+          <div class="diary-time">${timeAgo(d.timestamp)}</div>
         </div>
-        <div class="diary-text">${d.text}</div>
-        <div class="diary-time">${timeAgo(d.timestamp)}</div>
-      </div>
-    `).join('') || '<div class="empty-state">첫 추천을 남겨주세요! ✨</div>';
+      `).join('') || '<div class="empty-state">첫 추천을 남겨주세요! ✨</div>';
+    }
   };
 
   updateAllContent();
@@ -334,6 +347,7 @@ async function renderHome() {
   div.querySelector('#refresh-news').onclick = updateAllContent;
 
   div.querySelector('#add-recommend-btn').onclick = () => {
+    if (!state.user) return alert('추천을 공유하려면 로그인이 필요합니다!');
     const location = prompt('추천 장소:'); if (!location) return;
     const text = prompt('추천 이유:'); if (text) {
       state.diaries.unshift({ id: Date.now(), location, text, timestamp: new Date(), user: state.user.nickname });
